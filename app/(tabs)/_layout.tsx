@@ -26,46 +26,50 @@ export default function TabsLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: "#2563eb",
-        tabBarInactiveTintColor: "#9ca3af",
+        tabBarActiveTintColor: "#0f172a",
+        tabBarInactiveTintColor: "#cbd5e1",
         tabBarStyle: {
           backgroundColor: "#ffffff",
           borderTopWidth: 1,
-          borderTopColor: "#e5e7eb",
-          height: 85,
-          paddingTop: 8,
-          paddingBottom: 25,
+          borderTopColor: "#f1f5f9",
+          height: 90,
+          paddingTop: 10,
+          paddingBottom: 30,
+          elevation: 0,
+          shadowOpacity: 0,
         },
         tabBarLabelStyle: {
-          fontSize: 12,
-          fontWeight: "600",
+          fontSize: 11,
+          fontWeight: "700",
+          textTransform: "uppercase",
+          letterSpacing: 0.5,
         },
       }}
     >
       <Tabs.Screen
         name="index"
         options={{
-          title: "Home",
+          title: "Portal",
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="home" size={size} color={color} />
+            <Ionicons name="grid-outline" size={22} color={color} />
           ),
         }}
       />
       <Tabs.Screen
         name="attendance"
         options={{
-          title: "Attendance",
+          title: "Activity",
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="calendar" size={size} color={color} />
+            <Ionicons name="time-outline" size={22} color={color} />
           ),
         }}
       />
       <Tabs.Screen
         name="settings"
         options={{
-          title: "Settings",
+          title: "Config",
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="settings" size={size} color={color} />
+            <Ionicons name="options-outline" size={22} color={color} />
           ),
         }}
       />

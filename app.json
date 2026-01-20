@@ -4,7 +4,7 @@
     "slug": "nest-erp-parent",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/thenestschoollogo.png",
     "scheme": "nest-erp",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
@@ -41,6 +41,13 @@
     ],
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "edc79d6d-852b-419f-bde0-73eac23df12a"
+      }
+    },
+    "owner": "lakshwin.kr"
   }
 }

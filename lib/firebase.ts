@@ -13,12 +13,12 @@ const dataFirebaseConfig = {
 
 // Firebase project for parent app (credentials, FCM)
 const appFirebaseConfig = {
-  apiKey: "AIzaSyCnTTRtlgk0yN_PjkCpCXBEjXymzfBuPGk",
-  authDomain: "nest-erp-app.firebaseapp.com",
-  projectId: "nest-erp-app",
-  storageBucket: "nest-erp-app.firebasestorage.app",
-  messagingSenderId: "1044796306871",
-  appId: "1:1044796306871:web:b0de9878e805c78af02432",
+  apiKey: "AIzaSyA9AoUui_cyazBgDkhz2pGxmFoRlt5aicQ",
+  authDomain: "nesterp-813b8.firebaseapp.com",
+  projectId: "nesterp-813b8",
+  storageBucket: "nesterp-813b8.firebasestorage.app",
+  messagingSenderId: "372900632752",
+  appId: "1:372900632752:web:053cb9cce93fa464f4c375"
 };
 
 // Initialize Firebase apps

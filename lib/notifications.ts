@@ -41,25 +41,43 @@ export async function registerForPushNotifications(
     return null;
   }
 
-  // Get Expo push token
+  // Get tokens
   try {
+    // 1. Get Expo Push Token
     const projectId =
       Constants.expoConfig?.extra?.eas?.projectId ??
       Constants.easConfig?.projectId;
 
-    if (!projectId) {
-      console.error("EAS Project ID not found in app.json. Please run 'eas project:init' or set it manually.");
+    let expoTokenData = null;
+    if (projectId) {
+      expoTokenData = await Notifications.getExpoPushTokenAsync({
+        projectId,
+      });
+      console.log("Expo Push Token:", expoTokenData.data);
+      token = expoTokenData.data;
+    } else {
+      console.warn("No EAS Project ID found. Skipping Expo Push Token.");
     }
 
-    const tokenData = await Notifications.getExpoPushTokenAsync({
-      projectId,
-    });
-    token = tokenData.data;
+    // 2. Get Native Device Token (FCM on Android)
+    try {
+      const deviceToken = await Notifications.getDevicePushTokenAsync();
+      console.log("Native Device (FCM) Token:", deviceToken.data);
+      
+      // If we don't have an Expo token (e.g. missing projectId), use the native token
+      if (!token) {
+        token = deviceToken.data;
+      }
+    } catch (deviceError) {
+      console.warn("Failed to get native device token:", deviceError);
+    }
 
-    // Save token to Firestore
-    await updateFcmToken(usn, token);
+    // Save whichever token we got to Firestore
+    if (token) {
+      await updateFcmToken(usn, token);
+    }
   } catch (error) {
-    console.error("Failed to get push token:", error);
+    console.error("Failed to get push token sequence:", error);
   }
 
   // Android-specific channel

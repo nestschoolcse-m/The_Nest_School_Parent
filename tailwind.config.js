@@ -5,33 +5,36 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        primary: {
-          50: "#eff6ff",
-          100: "#dbeafe",
-          200: "#bfdbfe",
-          300: "#93c5fd",
-          400: "#60a5fa",
-          500: "#3b82f6",
-          600: "#2563eb",
-          700: "#1d4ed8",
-          800: "#1e40af",
-          900: "#1e3a8a",
+        brand: {
+          50: "#f8fafc",
+          100: "#f1f5f9",
+          200: "#e2e8f0",
+          300: "#cbd5e1",
+          400: "#94a3b8",
+          500: "#64748b",
+          600: "#475569",
+          700: "#334155",
+          800: "#1e293b",
+          900: "#0f172a",
+          950: "#020617",
+        },
+        accent: {
+          DEFAULT: "#0f172a",
+          light: "#334155",
         },
         entry: {
-          light: "#dcfce7",
-          DEFAULT: "#22c55e",
-          dark: "#166534",
+          light: "#f0fdf4",
+          DEFAULT: "#166534",
         },
         exit: {
-          light: "#fee2e2",
-          DEFAULT: "#ef4444",
-          dark: "#991b1b",
+          light: "#fef2f2",
+          DEFAULT: "#991b1b",
         },
-        sports: {
-          light: "#ede9fe",
-          DEFAULT: "#8b5cf6",
-          dark: "#5b21b6",
-        },
+      },
+      borderRadius: {
+        'xl': '12px',
+        '2xl': '16px',
+        '3xl': '24px',
       },
     },
   },

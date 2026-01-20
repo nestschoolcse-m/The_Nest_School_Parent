@@ -14,65 +14,66 @@ interface StudentCardProps {
 
 export function StudentCard({ student, latestStatus }: StudentCardProps) {
   return (
-    <View className="bg-white rounded-3xl shadow-lg overflow-hidden mx-4 mt-4">
-      {/* Header with gradient */}
-      <View className="bg-primary-600 px-6 py-6">
+    <View className="bg-white rounded-3xl border border-brand-100 overflow-hidden mx-4 mt-6">
+      {/* Header - Clean & Minimal */}
+      <View className="px-6 py-8 border-b border-brand-50">
         <View className="flex-row items-center">
-          {/* Avatar placeholder */}
-          <View className="w-20 h-20 rounded-full bg-white/20 items-center justify-center mr-4">
-            <Ionicons name="person" size={40} color="white" />
+          <View className="w-16 h-16 rounded-2xl bg-brand-50 items-center justify-center mr-5 border border-brand-100">
+            <Ionicons name="person" size={32} color="#0f172a" />
           </View>
           <View className="flex-1">
-            <Text className="text-white text-2xl font-bold">{student.name}</Text>
-            <Text className="text-white/80 text-lg mt-1">USN: {student.usn}</Text>
-            <View className="flex-row items-center mt-2">
-              <View className="bg-white/20 px-3 py-1 rounded-full">
-                <Text className="text-white font-semibold">
-                  Grade {student.grade}
-                </Text>
-              </View>
+            <Text className="text-brand-950 text-2xl font-bold tracking-tight">{student.name}</Text>
+            <View className="flex-row items-center mt-1">
+              <Text className="text-brand-500 text-sm font-medium uppercase tracking-wider">USN: {student.usn}</Text>
+              <View className="mx-2 w-1 h-1 rounded-full bg-brand-200" />
+              <Text className="text-brand-500 text-sm font-medium uppercase tracking-wider">Grade {student.grade}</Text>
             </View>
           </View>
         </View>
       </View>
 
-      {/* Latest Status */}
+      {/* Latest Status - Professional Info Block */}
       {latestStatus && (
-        <View className="px-6 py-4 bg-gray-50 border-b border-gray-100">
+        <View className="px-6 py-4 bg-brand-50/30 border-b border-brand-50">
           <View className="flex-row items-center justify-between">
             <View className="flex-row items-center">
-              <Ionicons
-                name={
-                  latestStatus.type === "ENTRY"
-                    ? "log-in"
-                    : latestStatus.type === "EXIT"
-                    ? "log-out"
-                    : "fitness"
-                }
-                size={24}
-                color={
-                  latestStatus.type === "ENTRY"
-                    ? "#22c55e"
-                    : latestStatus.type === "EXIT"
-                    ? "#ef4444"
-                    : "#8b5cf6"
-                }
-              />
-              <Text className="text-gray-600 ml-2">Latest Status</Text>
+              <View className="w-8 h-8 rounded-full bg-white items-center justify-center mr-3 border border-brand-100/50">
+                <Ionicons
+                  name={
+                    latestStatus.type === "ENTRY"
+                      ? "arrow-down-circle"
+                      : latestStatus.type === "EXIT"
+                      ? "arrow-up-circle"
+                      : "fitness-outline"
+                  }
+                  size={20}
+                  color={
+                    latestStatus.type === "ENTRY"
+                      ? "#166534"
+                      : latestStatus.type === "EXIT"
+                      ? "#991b1b"
+                      : "#0f172a"
+                  }
+                />
+              </View>
+              <View>
+                <Text className="text-brand-400 text-[10px] font-bold uppercase tracking-[1px]">Latest Activity</Text>
+                <Text className="text-brand-900 font-bold text-sm">
+                  {latestStatus.type}
+                </Text>
+              </View>
             </View>
-            <Badge
-              text={latestStatus.type}
-              variant={getAttendanceVariant(latestStatus.type)}
-            />
+            <View className="items-end">
+              <Text className="text-brand-500 text-xs font-medium">
+                {formatAttendanceTime(latestStatus.timestamp)}
+              </Text>
+            </View>
           </View>
-          <Text className="text-gray-500 text-sm mt-1">
-            {formatAttendanceTime(latestStatus.timestamp)}
-          </Text>
         </View>
       )}
 
-      {/* Student Details */}
-      <View className="px-6 py-4">
+      {/* Student Details - Structured Layout */}
+      <View className="px-6 py-4 bg-white">
         <InfoRow
           icon="calendar-outline"
           label="Date of Birth"
@@ -84,21 +85,23 @@ export function StudentCard({ student, latestStatus }: StudentCardProps) {
           value={student.fatherName}
         />
         <InfoRow
-          icon="call-outline"
-          label="Father's Mobile"
-          value={student.fatherMobile.toString()}
-        />
-        <InfoRow
           icon="person-outline"
           label="Mother's Name"
           value={student.motherName}
+          isLast
         />
         <InfoRow
           icon="call-outline"
-          label="Mother's Mobile"
+          label="Father's Contact Number"
+          value={student.fatherMobile.toString()}
+        />
+        <InfoRow
+          icon="call-outline"
+          label="Mother's Contact Number"
           value={student.motherMobile.toString()}
           isLast
         />
+        
       </View>
     </View>
   );
@@ -114,16 +117,16 @@ interface InfoRowProps {
 function InfoRow({ icon, label, value, isLast = false }: InfoRowProps) {
   return (
     <View
-      className={`flex-row items-center py-3 ${
-        !isLast ? "border-b border-gray-100" : ""
+      className={`flex-row items-center py-4 ${
+        !isLast ? "border-b border-brand-50" : ""
       }`}
     >
-      <View className="w-10 h-10 rounded-full bg-primary-100 items-center justify-center mr-3">
-        <Ionicons name={icon} size={20} color="#2563eb" />
+      <View className="w-10 h-10 rounded-xl bg-brand-50/50 items-center justify-center mr-4 border border-brand-50">
+        <Ionicons name={icon} size={18} color="#475569" />
       </View>
       <View className="flex-1">
-        <Text className="text-gray-500 text-sm">{label}</Text>
-        <Text className="text-gray-900 font-medium text-base">{value}</Text>
+        <Text className="text-brand-400 text-[10px] font-bold uppercase tracking-wider mb-0.5">{label}</Text>
+        <Text className="text-brand-900 font-semibold text-base">{value}</Text>
       </View>
     </View>
   );

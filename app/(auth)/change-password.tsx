@@ -57,7 +57,7 @@ export default function ChangePasswordScreen() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-100">
+    <SafeAreaView className="flex-1 bg-white">
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         className="flex-1"
@@ -66,33 +66,32 @@ export default function ChangePasswordScreen() {
           contentContainerStyle={{ flexGrow: 1 }}
           keyboardShouldPersistTaps="handled"
         >
-          <View className="flex-1 px-6 justify-center">
-            {/* Header */}
-            <View className="items-center mb-8">
-              <View className="w-20 h-20 bg-yellow-500 rounded-full items-center justify-center mb-4">
-                <Ionicons name="key" size={40} color="white" />
+          <View className="flex-1 px-8 justify-center py-12">
+            {/* Security Header */}
+            <View className="items-center mb-10">
+              <View className="w-16 h-16 bg-brand-50 rounded-2xl items-center justify-center mb-6 border border-brand-100/50">
+                <Ionicons name="shield-checkmark-outline" size={32} color="#0f172a" />
               </View>
-              <Text className="text-2xl font-bold text-gray-900">
-                Change Password
+              <Text className="text-brand-900 text-2xl font-bold tracking-tight">
+                Update Security
               </Text>
-              <Text className="text-gray-500 text-center mt-2 px-4">
-                Please set a new password for your account. You're logged in as{" "}
-                <Text className="font-semibold">{user?.usn}</Text>
+              <Text className="text-brand-400 text-sm text-center mt-2 px-6">
+                Please set a secure password for account <Text className="font-bold text-brand-900">{user?.usn}</Text> to continue.
               </Text>
             </View>
 
-            {/* Form */}
-            <View className="bg-white rounded-3xl p-6 shadow-lg">
+            {/* Form Container */}
+            <View className="w-full max-w-sm self-center">
               {error ? (
-                <View className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 mb-4 flex-row items-center">
-                  <Ionicons name="alert-circle" size={20} color="#ef4444" />
-                  <Text className="text-red-600 ml-2 flex-1">{error}</Text>
+                <View className="bg-red-50 border border-red-100 rounded-2xl px-4 py-3 mb-6 flex-row items-center">
+                  <Ionicons name="alert-circle-outline" size={20} color="#991b1b" />
+                  <Text className="text-red-800 ml-3 text-xs font-semibold flex-1">{error}</Text>
                 </View>
               ) : null}
 
               <Input
                 label="New Password"
-                placeholder="Enter new password"
+                placeholder="6+ characters required"
                 value={newPassword}
                 onChangeText={setNewPassword}
                 icon="lock-closed-outline"
@@ -100,20 +99,26 @@ export default function ChangePasswordScreen() {
               />
 
               <Input
-                label="Confirm Password"
-                placeholder="Confirm new password"
+                label="Confirm Security Code"
+                placeholder="Repeat new password"
                 value={confirmPassword}
                 onChangeText={setConfirmPassword}
-                icon="lock-closed-outline"
+                icon="shield-outline"
                 isPassword
               />
 
               <Button
-                title="Update Password"
+                title="Update Credentials"
                 onPress={handleChangePassword}
                 loading={loading}
-                className="mt-4"
+                className="mt-6"
               />
+              
+              <View className="mt-8 items-center">
+                <Text className="text-brand-300 text-[10px] font-bold uppercase tracking-widest">
+                  Encryption Active
+                </Text>
+              </View>
             </View>
           </View>
         </ScrollView>

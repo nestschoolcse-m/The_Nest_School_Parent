@@ -11,20 +11,20 @@ interface BadgeProps {
 
 const variantStyles: Record<BadgeVariant, { bg: string; text: string }> = {
   entry: {
-    bg: "bg-entry-light",
-    text: "text-entry-dark",
+    bg: "bg-entry/10",
+    text: "text-entry",
   },
   exit: {
-    bg: "bg-exit-light",
-    text: "text-exit-dark",
+    bg: "bg-exit/10",
+    text: "text-exit",
   },
   sports: {
-    bg: "bg-sports-light",
-    text: "text-sports-dark",
+    bg: "bg-brand-100",
+    text: "text-brand-900",
   },
   default: {
-    bg: "bg-gray-200",
-    text: "text-gray-700",
+    bg: "bg-brand-50",
+    text: "text-brand-400",
   },
 };
 
@@ -32,8 +32,8 @@ export function Badge({ text, variant = "default", className = "" }: BadgeProps)
   const styles = variantStyles[variant];
 
   return (
-    <View className={`px-3 py-1 rounded-full ${styles.bg} ${className}`}>
-      <Text className={`text-sm font-semibold ${styles.text}`}>{text}</Text>
+    <View className={`px-2 py-0.5 rounded-md ${styles.bg} ${className}`}>
+      <Text className={`text-[10px] font-bold uppercase tracking-wider ${styles.text}`}>{text}</Text>
     </View>
   );
 }

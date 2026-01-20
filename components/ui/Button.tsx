@@ -18,18 +18,18 @@ export function Button({
   disabled = false,
   className = "",
 }: ButtonProps) {
-  const baseStyles = "py-4 px-6 rounded-xl flex-row justify-center items-center";
+  const baseStyles = "py-4 px-6 rounded-2xl flex-row justify-center items-center";
 
   const variantStyles = {
-    primary: "bg-primary-600 active:bg-primary-700",
-    secondary: "bg-gray-200 active:bg-gray-300",
-    outline: "bg-transparent border-2 border-primary-600",
+    primary: "bg-brand-900 active:bg-brand-950",
+    secondary: "bg-brand-100 active:bg-brand-200",
+    outline: "bg-transparent border border-brand-200 active:bg-brand-50",
   };
 
   const textStyles = {
-    primary: "text-white font-semibold text-lg",
-    secondary: "text-gray-800 font-semibold text-lg",
-    outline: "text-primary-600 font-semibold text-lg",
+    primary: "text-white font-bold text-base tracking-tight",
+    secondary: "text-brand-900 font-semibold text-base",
+    outline: "text-brand-900 font-semibold text-base",
   };
 
   const isDisabled = disabled || loading;
@@ -39,13 +39,13 @@ export function Button({
       onPress={onPress}
       disabled={isDisabled}
       className={`${baseStyles} ${variantStyles[variant]} ${
-        isDisabled ? "opacity-50" : ""
+        isDisabled ? "opacity-40" : ""
       } ${className}`}
-      activeOpacity={0.8}
+      activeOpacity={0.7}
     >
       {loading ? (
         <ActivityIndicator
-          color={variant === "primary" ? "#ffffff" : "#2563eb"}
+          color={variant === "primary" ? "#ffffff" : "#0f172a"}
           size="small"
         />
       ) : (

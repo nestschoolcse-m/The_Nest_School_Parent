@@ -6,6 +6,7 @@ import {
   RefreshControl,
   SafeAreaView,
   StatusBar,
+  Image,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/contexts/AuthContext";
@@ -56,19 +57,30 @@ export default function HomeScreen() {
   const isLoading = studentLoading || attendanceLoading;
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-100">
-      <StatusBar barStyle="dark-content" backgroundColor="#f3f4f6" />
+    <SafeAreaView className="flex-1 bg-white">
+      <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
 
       {/* Header */}
-      <View className="px-6 pt-4 pb-2">
-        <View className="flex-row items-center justify-between">
-          <View>
-            <Text className="text-gray-500 text-base">Welcome back,</Text>
-            <Text className="text-gray-900 text-2xl font-bold">Parent</Text>
+      <View className="px-6 pt-6 pb-4">
+        <View className="flex-row items-center justify-between mb-8">
+          <Image
+            source={require("@/assets/thenestschoollogo.png")}
+            style={{ width: 140, height: 48 }}
+            resizeMode="contain"
+          />
+          <View className="w-10 h-10 border border-brand-100 rounded-2xl items-center justify-center">
+            <Ionicons name="notifications-outline" size={20} color="#0f172a" />
           </View>
-          <View className="w-12 h-12 bg-primary-100 rounded-full items-center justify-center">
-            <Ionicons name="notifications-outline" size={24} color="#2563eb" />
-          </View>
+        </View>
+        
+        <View>
+          
+          <Text className="text-blue-900 text-2xl font-semibold mb-2">
+            Welcome,
+          </Text>
+          <Text className="text-brand-900 text-2xl font-bold tracking-tight">
+            {student?.fatherName ? `Mr. ${student.fatherName}` : "Parent"}
+          </Text>W
         </View>
       </View>
 
@@ -78,45 +90,28 @@ export default function HomeScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            colors={["#2563eb"]}
-            tintColor="#2563eb"
+            colors={["#0f172a"]}
+            tintColor="#0f172a"
           />
         }
         showsVerticalScrollIndicator={false}
       >
         {isLoading && !student ? (
           <View className="flex-1 items-center justify-center py-20">
-            <Text className="text-gray-500">Loading student data...</Text>
+            <Text className="text-brand-400 font-medium">Loading student data...</Text>
           </View>
         ) : studentError ? (
           <View className="flex-1 items-center justify-center py-20 px-6">
-            <Ionicons name="alert-circle" size={48} color="#ef4444" />
-            <Text className="text-red-500 text-center mt-4">{studentError}</Text>
+            <View className="w-16 h-16 bg-red-50 rounded-full items-center justify-center mb-4">
+              <Ionicons name="alert-circle-outline" size={32} color="#991b1b" />
+            </View>
+            <Text className="text-brand-900 font-bold text-lg text-center">{studentError}</Text>
+            <Text className="text-brand-400 text-center mt-2 px-8">There was an issue fetching the latest information.</Text>
           </View>
         ) : student ? (
           <>
             <StudentCard student={student} latestStatus={latestStatus} />
 
-            {/* Quick Actions */}
-            <View className="px-4 mt-6 mb-6">
-              <Text className="text-gray-900 text-lg font-semibold mb-3 px-2">
-                Quick Info
-              </Text>
-              <View className="flex-row gap-3">
-                <QuickCard
-                  icon="school"
-                  label="Grade"
-                  value={student.grade}
-                  color="#2563eb"
-                />
-                <QuickCard
-                  icon="finger-print"
-                  label="USN"
-                  value={student.usn}
-                  color="#8b5cf6"
-                />
-              </View>
-            </View>
           </>
         ) : null}
       </ScrollView>
@@ -128,20 +123,16 @@ interface QuickCardProps {
   icon: keyof typeof Ionicons.glyphMap;
   label: string;
   value: string;
-  color: string;
 }
 
-function QuickCard({ icon, label, value, color }: QuickCardProps) {
+function QuickCard({ icon, label, value }: QuickCardProps) {
   return (
-    <View className="flex-1 bg-white rounded-2xl p-4 shadow-sm">
-      <View
-        className="w-10 h-10 rounded-xl items-center justify-center mb-2"
-        style={{ backgroundColor: color + "20" }}
-      >
-        <Ionicons name={icon} size={22} color={color} />
+    <View className="flex-1 bg-brand-50/50 rounded-3xl p-5 border border-brand-100">
+      <View className="w-10 h-10 rounded-xl bg-white items-center justify-center mb-4 shadow-sm">
+        <Ionicons name={icon} size={20} color="#0f172a" />
       </View>
-      <Text className="text-gray-500 text-sm">{label}</Text>
-      <Text className="text-gray-900 font-semibold text-lg">{value}</Text>
+      <Text className="text-brand-400 text-[10px] font-bold uppercase tracking-wider mb-1">{label}</Text>
+      <Text className="text-brand-900 font-bold text-lg tracking-tight">{value}</Text>
     </View>
   );
 }

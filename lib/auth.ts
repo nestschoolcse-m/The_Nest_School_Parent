@@ -30,28 +30,41 @@ function hashPassword(password: string): string {
 // Check if student exists in data database
 export async function checkStudentExists(usn: string): Promise<boolean> {
   try {
+    console.log("[Auth] Checking student existence in dataDb for USN:", usn);
     const studentRef = doc(dataDb, "students", usn);
     const studentSnap = await getDoc(studentRef);
-    return studentSnap.exists();
-  } catch (error) {
-    console.error("Error checking student:", error);
+    const exists = studentSnap.exists();
+    console.log("[Auth] Student exists in dataDb:", exists);
+    return exists;
+  } catch (error: any) {
+    console.error("[Auth] Error checking student in dataDb:", error.code, error.message);
     return false;
   }
 }
 
 // Create default credentials for a student if not exists
 export async function ensureCredentialsExist(usn: string): Promise<void> {
-  const credRef = doc(appDb, "parentCredentials", usn);
-  const credSnap = await getDoc(credRef);
+  try {
+    console.log("[Auth] Ensuring credentials exist in appDb for USN:", usn);
+    const credRef = doc(appDb, "parentCredentials", usn);
+    const credSnap = await getDoc(credRef);
 
-  if (!credSnap.exists()) {
-    await setDoc(credRef, {
-      password: hashPassword(DEFAULT_PASSWORD),
-      isFirstLogin: true,
-      fcmToken: null,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-    });
+    if (!credSnap.exists()) {
+      console.log("[Auth] Credentials not found in appDb, creating default...");
+      await setDoc(credRef, {
+        password: hashPassword(DEFAULT_PASSWORD),
+        isFirstLogin: true,
+        fcmToken: null,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
+      console.log("[Auth] Default credentials created successfully.");
+    } else {
+      console.log("[Auth] Credentials already exist in appDb.");
+    }
+  } catch (error: any) {
+    console.error("[Auth] Error in ensureCredentialsExist:", error.code, error.message);
+    throw error; // Re-throw to catch in validateLogin
   }
 }
 
@@ -61,9 +74,11 @@ export async function validateLogin(
   password: string
 ): Promise<{ success: boolean; isFirstLogin?: boolean; error?: string }> {
   try {
+    console.log("[Auth] Starting login validation for USN:", usn);
     // Check if student exists
     const studentExists = await checkStudentExists(usn);
     if (!studentExists) {
+      console.log("[Auth] Login failed: Student not found in dataDb.");
       return { success: false, error: "Invalid USN. Student not found." };
     }
 
@@ -76,12 +91,14 @@ export async function validateLogin(
     const credData = credSnap.data();
 
     if (!credData) {
+      console.log("[Auth] Login failed: Credentials missing after check.");
       return { success: false, error: "Credentials not found." };
     }
 
     // Check password
     const hashedInput = hashPassword(password);
     if (credData.password !== hashedInput) {
+      console.log("[Auth] Login failed: Incorrect password.");
       return { success: false, error: "Incorrect password." };
     }
 
@@ -92,10 +109,16 @@ export async function validateLogin(
     };
     await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(authUser));
 
+    console.log("[Auth] Login successful!");
     return { success: true, isFirstLogin: credData.isFirstLogin };
-  } catch (error) {
-    console.error("Login error:", error);
-    return { success: false, error: "Login failed. Please try again." };
+  } catch (error: any) {
+    console.error("[Auth] Critical login error:", error.code, error.message);
+    return { 
+      success: false, 
+      error: error.code === 'permission-denied' 
+        ? "Access Denied. Check your Firestore Rules." 
+        : `Login failed: ${error.message}` 
+    };
   }
 }
 

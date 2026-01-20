@@ -54,7 +54,7 @@ export default function LoginScreen() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-100">
+    <SafeAreaView className="flex-1 bg-white">
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         className="flex-1"
@@ -63,34 +63,39 @@ export default function LoginScreen() {
           contentContainerStyle={{ flexGrow: 1 }}
           keyboardShouldPersistTaps="handled"
         >
-          <View className="flex-1 px-6 justify-center">
-            {/* Logo/Header */}
-            <View className="items-center mb-10">
-              <View className="w-24 h-24 bg-primary-600 rounded-3xl items-center justify-center mb-4 shadow-lg">
-                <Ionicons name="school" size={48} color="white" />
-              </View>
-              <Text className="text-3xl font-bold text-gray-900">
-                NEST ERP
+          <View className="flex-1 px-8 justify-center py-12">
+            {/* Logo Section */}
+            <View className="items-center mb-12">
+              <Image
+                source={require("@/assets/thenestschoollogo.png")}
+                style={{ width: 220, height: 80 }}
+                resizeMode="contain"
+              />
+              <View className="h-px w-12 bg-brand-100 mt-6" />
+              <Text className="text-brand-400 text-xs font-bold uppercase tracking-[3px] mt-6 text-center">
+                Parent Portal
               </Text>
-              <Text className="text-gray-500 text-lg mt-1">Parent Portal</Text>
             </View>
 
             {/* Login Form */}
-            <View className="bg-white rounded-3xl p-6 shadow-lg">
-              <Text className="text-2xl font-bold text-gray-900 mb-6">
+            <View className="w-full max-w-sm self-center">
+              <Text className="text-brand-900 text-2xl font-bold tracking-tight mb-2 text-center">
                 Welcome Back
+              </Text>
+              <Text className="text-brand-500 text-sm text-center mb-8">
+                Please enter your credentials to continue
               </Text>
 
               {error ? (
-                <View className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 mb-4 flex-row items-center">
-                  <Ionicons name="alert-circle" size={20} color="#ef4444" />
-                  <Text className="text-red-600 ml-2 flex-1">{error}</Text>
+                <View className="bg-red-50 border border-red-100 rounded-2xl px-4 py-3 mb-6 flex-row items-center">
+                  <Ionicons name="alert-circle-outline" size={20} color="#991b1b" />
+                  <Text className="text-red-800 ml-3 text-xs font-semibold flex-1">{error}</Text>
                 </View>
               ) : null}
 
               <Input
                 label="Student USN"
-                placeholder="e.g., NG823004"
+                placeholder="Enter USN (e.g., NG823004)"
                 value={usn}
                 onChangeText={(text) => setUsn(text.toUpperCase())}
                 icon="card-outline"
@@ -99,7 +104,7 @@ export default function LoginScreen() {
 
               <Input
                 label="Password"
-                placeholder="Enter your password"
+                placeholder="Enter password"
                 value={password}
                 onChangeText={setPassword}
                 icon="lock-closed-outline"
@@ -113,9 +118,14 @@ export default function LoginScreen() {
                 className="mt-4"
               />
 
-              <Text className="text-gray-400 text-center mt-6 text-sm">
-                Default password: parent@123
-              </Text>
+              <View className="mt-10 items-center">
+                <Text className="text-brand-300 text-[10px] font-bold uppercase tracking-widest">
+                  Authentication Secured
+                </Text>
+                <Text className="text-brand-400 text-[10px] mt-1">
+                  Default: parent@123
+                </Text>
+              </View>
             </View>
           </View>
         </ScrollView>

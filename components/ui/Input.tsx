@@ -26,40 +26,40 @@ export function Input({
   const [showPassword, setShowPassword] = useState(false);
 
   return (
-    <View className={`mb-4 ${className}`}>
-      <Text className="text-gray-700 font-medium mb-2 text-base">{label}</Text>
+    <View className={`mb-5 ${className}`}>
+      <Text className="text-brand-700 font-semibold mb-1.5 text-sm tracking-tight">{label}</Text>
       <View
-        className={`flex-row items-center bg-gray-100 rounded-xl px-4 border-2 ${
-          error ? "border-red-400" : "border-transparent"
+        className={`flex-row items-center bg-white rounded-2xl px-4 border ${
+          error ? "border-red-500" : "border-brand-200"
         }`}
       >
         {icon && (
           <Ionicons
             name={icon}
             size={20}
-            color="#6b7280"
-            style={{ marginRight: 10 }}
+            color="#94a3b8"
+            style={{ marginRight: 12 }}
           />
         )}
         <TextInput
-          className="flex-1 py-4 text-base text-gray-900"
-          placeholderTextColor="#9ca3af"
+          className="flex-1 py-4 text-base text-brand-900 font-medium"
+          placeholderTextColor="#cbd5e1"
           secureTextEntry={isPassword && !showPassword}
           autoCapitalize={isPassword ? "none" : "characters"}
           {...props}
         />
         {isPassword && (
-          <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+          <TouchableOpacity onPress={() => setShowPassword(!showPassword)} activeOpacity={0.6}>
             <Ionicons
-              name={showPassword ? "eye-off" : "eye"}
-              size={22}
-              color="#6b7280"
+              name={showPassword ? "eye-outline" : "eye-outline"}
+              size={20}
+              color="#94a3b8"
             />
           </TouchableOpacity>
         )}
       </View>
       {error && (
-        <Text className="text-red-500 text-sm mt-1 ml-1">{error}</Text>
+        <Text className="text-red-600 text-xs mt-1.5 ml-1 font-medium">{error}</Text>
       )}
     </View>
   );
