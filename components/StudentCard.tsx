@@ -7,12 +7,22 @@ import { AttendanceLog } from "@/hooks/useAttendance";
 import { Badge, getAttendanceVariant } from "./ui/Badge";
 import { formatAttendanceTime } from "@/lib/notifications";
 
+import { getStudentClass } from "@/lib/studentUtils";
+
 interface StudentCardProps {
   student: Student;
   latestStatus?: AttendanceLog | null;
 }
 
 export function StudentCard({ student, latestStatus }: StudentCardProps) {
+  const studentInfo = getStudentClass(student.usn);
+  const admissionNo = `${student.usn}-L01`;
+  const parentNo = `${student.usn}-P01`;
+
+  const classLabel = studentInfo.type === "STD_1_10" 
+    ? `Class ${studentInfo.standard}` 
+    : studentInfo.type.replace("_", " ");
+
   return (
     <View className="bg-white rounded-3xl border border-brand-100 overflow-hidden mx-4 mt-6">
       {/* Header - Clean & Minimal */}
@@ -24,9 +34,10 @@ export function StudentCard({ student, latestStatus }: StudentCardProps) {
           <View className="flex-1">
             <Text className="text-brand-950 text-2xl font-bold tracking-tight">{student.name}</Text>
             <View className="flex-row items-center mt-1">
-              <Text className="text-brand-500 text-sm font-medium uppercase tracking-wider">USN: {student.usn}</Text>
-              <View className="mx-2 w-1 h-1 rounded-full bg-brand-200" />
-              <Text className="text-brand-500 text-sm font-medium uppercase tracking-wider">Grade {student.grade}</Text>
+              <View className="px-2 py-0.5 bg-brand-900 rounded-lg mr-2">
+                <Text className="text-white text-[10px] font-bold uppercase tracking-wider">{classLabel}</Text>
+              </View>
+              <Text className="text-brand-500 text-xs font-medium uppercase tracking-wider">USN: {student.usn}</Text>
             </View>
           </View>
         </View>
@@ -74,6 +85,17 @@ export function StudentCard({ student, latestStatus }: StudentCardProps) {
 
       {/* Student Details - Structured Layout */}
       <View className="px-6 py-4 bg-white">
+        <View className="flex-row mb-2">
+          <View className="flex-1 mr-2 px-4 py-3 bg-brand-50/50 rounded-2xl border border-brand-100">
+            <Text className="text-brand-400 text-[10px] font-bold uppercase tracking-wider mb-0.5">Admission No</Text>
+            <Text className="text-brand-900 font-bold text-sm">{admissionNo}</Text>
+          </View>
+          <View className="flex-1 ml-2 px-4 py-3 bg-brand-50/50 rounded-2xl border border-brand-100">
+            <Text className="text-brand-400 text-[10px] font-bold uppercase tracking-wider mb-0.5">Parent No</Text>
+            <Text className="text-brand-900 font-bold text-sm">{parentNo}</Text>
+          </View>
+        </View>
+
         <InfoRow
           icon="calendar-outline"
           label="Date of Birth"
@@ -88,20 +110,18 @@ export function StudentCard({ student, latestStatus }: StudentCardProps) {
           icon="person-outline"
           label="Mother's Name"
           value={student.motherName}
-          isLast
         />
         <InfoRow
           icon="call-outline"
-          label="Father's Contact Number"
+          label="Father's Mobile"
           value={student.fatherMobile.toString()}
         />
         <InfoRow
           icon="call-outline"
-          label="Mother's Contact Number"
+          label="Mother's Mobile"
           value={student.motherMobile.toString()}
           isLast
         />
-        
       </View>
     </View>
   );

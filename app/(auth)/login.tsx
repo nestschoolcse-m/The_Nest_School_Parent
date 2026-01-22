@@ -95,7 +95,7 @@ export default function LoginScreen() {
 
               <Input
                 label="Student USN"
-                placeholder="Enter USN (e.g., NG823004)"
+                placeholder="Enter USN (e.g., NG823004_L01)"
                 value={usn}
                 onChangeText={(text) => setUsn(text.toUpperCase())}
                 icon="card-outline"

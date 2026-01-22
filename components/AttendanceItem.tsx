@@ -1,15 +1,22 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { View, Text } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { AttendanceLog } from "@/hooks/useAttendance";
 import { Badge, getAttendanceVariant } from "./ui/Badge";
 import { formatAttendanceTime } from "@/lib/notifications";
+import { getStudentClass, getClassTimings, getAttendanceStatus } from "@/lib/studentUtils";
 
 interface AttendanceItemProps {
   log: AttendanceLog;
 }
 
 export function AttendanceItem({ log }: AttendanceItemProps) {
+  const statusInfo = useMemo(() => {
+    const studentClass = getStudentClass(log.usn);
+    const timings = getClassTimings(studentClass.type);
+    return getAttendanceStatus(log.type, log.timestamp, timings, 15);
+  }, [log]);
+
   const iconName =
     log.type === "ENTRY"
       ? "arrow-down-circle-outline"
@@ -41,7 +48,22 @@ export function AttendanceItem({ log }: AttendanceItemProps) {
       {/* Content Area */}
       <View className="flex-1">
         <View className="flex-row items-center justify-between">
-          <Text className="text-brand-900 font-bold text-base tracking-tight">{log.type}</Text>
+          <View className="flex-row items-center">
+            <Text className="text-brand-900 font-bold text-base tracking-tight mr-2">{log.type}</Text>
+            {statusInfo.status !== "NONE" && (
+              <View 
+                className="px-2 py-0.5 rounded-full" 
+                style={{ backgroundColor: `${statusInfo.color}15` }}
+              >
+                <Text 
+                  className="text-[10px] font-bold uppercase tracking-wider"
+                  style={{ color: statusInfo.color }}
+                >
+                  {statusInfo.label}
+                </Text>
+              </View>
+            )}
+          </View>
           <Text className="text-brand-400 text-[10px] font-bold uppercase tracking-wider">
             {log.timestamp.toLocaleDateString("en-IN", {
               day: "numeric",
