@@ -1,56 +1,38 @@
+"use client";
+
 import React from "react";
-import { View, Text, TouchableOpacity, ActivityIndicator } from "react-native";
+import { Loader2 } from "lucide-react";
+import { clsx, type ClassValue } from "clsx";
+import { twMerge } from "tailwind-merge";
 
-interface ButtonProps {
-  title: string;
-  onPress: () => void;
-  variant?: "primary" | "secondary" | "outline";
+function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
+}
+
+interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   loading?: boolean;
-  disabled?: boolean;
-  className?: string;
 }
 
-export function Button({
-  title,
-  onPress,
-  variant = "primary",
-  loading = false,
-  disabled = false,
-  className = "",
-}: ButtonProps) {
-  const baseStyles = "py-4 px-6 rounded-2xl flex-row justify-center items-center";
+export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
+  ({ className, children, loading, disabled, ...props }, ref) => {
+    return (
+      <button
+        ref={ref}
+        disabled={loading || disabled}
+        className={cn(
+          "relative flex w-full items-center justify-center rounded-xl bg-blue-600 px-6 py-3.5 text-sm font-bold text-white transition-all active:scale-[0.98] disabled:opacity-70",
+          className
+        )}
+        {...props}
+      >
+        {loading ? (
+          <Loader2 className="h-5 w-5 animate-spin" />
+        ) : (
+          children || props.title
+        )}
+      </button>
+    );
+  }
+);
 
-  const variantStyles = {
-    primary: "bg-brand-900 active:bg-brand-950",
-    secondary: "bg-brand-100 active:bg-brand-200",
-    outline: "bg-transparent border border-brand-200 active:bg-brand-50",
-  };
-
-  const textStyles = {
-    primary: "text-white font-bold text-base tracking-tight",
-    secondary: "text-brand-900 font-semibold text-base",
-    outline: "text-brand-900 font-semibold text-base",
-  };
-
-  const isDisabled = disabled || loading;
-
-  return (
-    <TouchableOpacity
-      onPress={onPress}
-      disabled={isDisabled}
-      className={`${baseStyles} ${variantStyles[variant]} ${
-        isDisabled ? "opacity-40" : ""
-      } ${className}`}
-      activeOpacity={0.7}
-    >
-      {loading ? (
-        <ActivityIndicator
-          color={variant === "primary" ? "#ffffff" : "#0f172a"}
-          size="small"
-        />
-      ) : (
-        <Text className={textStyles[variant]}>{title}</Text>
-      )}
-    </TouchableOpacity>
-  );
-}
+Button.displayName = "Button";

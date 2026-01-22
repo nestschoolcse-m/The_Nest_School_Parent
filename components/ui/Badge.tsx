@@ -1,5 +1,12 @@
+"use client";
+
 import React from "react";
-import { View, Text } from "react-native";
+import { clsx, type ClassValue } from "clsx";
+import { twMerge } from "tailwind-merge";
+
+function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
+}
 
 type BadgeVariant = "entry" | "exit" | "sports" | "default";
 
@@ -9,36 +16,25 @@ interface BadgeProps {
   className?: string;
 }
 
-const variantStyles: Record<BadgeVariant, { bg: string; text: string }> = {
-  entry: {
-    bg: "bg-entry/10",
-    text: "text-entry",
-  },
-  exit: {
-    bg: "bg-exit/10",
-    text: "text-exit",
-  },
-  sports: {
-    bg: "bg-brand-100",
-    text: "text-brand-900",
-  },
-  default: {
-    bg: "bg-brand-50",
-    text: "text-brand-400",
-  },
+const variantStyles: Record<BadgeVariant, string> = {
+  entry: "bg-green-50 text-green-700 border-green-100",
+  exit: "bg-red-50 text-red-700 border-red-100",
+  sports: "bg-slate-100 text-slate-800 border-slate-200",
+  default: "bg-gray-100 text-gray-600 border-gray-200",
 };
 
 export function Badge({ text, variant = "default", className = "" }: BadgeProps) {
-  const styles = variantStyles[variant];
-
   return (
-    <View className={`px-2 py-0.5 rounded-md ${styles.bg} ${className}`}>
-      <Text className={`text-[10px] font-bold uppercase tracking-wider ${styles.text}`}>{text}</Text>
-    </View>
+    <div className={cn(
+      "inline-flex items-center rounded-md border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider",
+      variantStyles[variant],
+      className
+    )}>
+      {text}
+    </div>
   );
 }
 
-// Helper to get variant from attendance type
 export function getAttendanceVariant(
   type: string
 ): "entry" | "exit" | "sports" {

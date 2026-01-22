@@ -6,10 +6,29 @@ import {
   serverTimestamp,
 } from "firebase/firestore";
 import { appDb, dataDb } from "./firebase";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const STORAGE_KEY = "auth_user";
 const DEFAULT_PASSWORD = "parent@123";
+
+// Storage helper for web
+const webStorage = {
+  getItem: (key: string) => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem(key);
+    }
+    return null;
+  },
+  setItem: (key: string, value: string) => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem(key, value);
+    }
+  },
+  removeItem: (key: string) => {
+    if (typeof window !== "undefined") {
+      localStorage.removeItem(key);
+    }
+  },
+};
 
 export interface AuthUser {
   usn: string;
@@ -107,17 +126,17 @@ export async function validateLogin(
       usn,
       isFirstLogin: credData.isFirstLogin,
     };
-    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(authUser));
+    webStorage.setItem(STORAGE_KEY, JSON.stringify(authUser));
 
     console.log("[Auth] Login successful!");
     return { success: true, isFirstLogin: credData.isFirstLogin };
   } catch (error: any) {
     console.error("[Auth] Critical login error:", error.code, error.message);
-    return { 
-      success: false, 
-      error: error.code === 'permission-denied' 
-        ? "Access Denied. Check your Firestore Rules." 
-        : `Login failed: ${error.message}` 
+    return {
+      success: false,
+      error: error.code === 'permission-denied'
+        ? "Access Denied. Check your Firestore Rules."
+        : `Login failed: ${error.message}`
     };
   }
 }
@@ -137,7 +156,7 @@ export async function changePassword(
 
     // Update local storage
     const authUser: AuthUser = { usn, isFirstLogin: false };
-    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(authUser));
+    webStorage.setItem(STORAGE_KEY, JSON.stringify(authUser));
 
     return { success: true };
   } catch (error) {
@@ -149,7 +168,7 @@ export async function changePassword(
 // Get stored user
 export async function getStoredUser(): Promise<AuthUser | null> {
   try {
-    const stored = await AsyncStorage.getItem(STORAGE_KEY);
+    const stored = webStorage.getItem(STORAGE_KEY);
     if (stored) {
       return JSON.parse(stored);
     }
@@ -161,7 +180,7 @@ export async function getStoredUser(): Promise<AuthUser | null> {
 
 // Logout
 export async function logout(): Promise<void> {
-  await AsyncStorage.removeItem(STORAGE_KEY);
+  webStorage.removeItem(STORAGE_KEY);
 }
 
 // Update FCM token
