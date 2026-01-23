@@ -113,70 +113,65 @@ export async function POST(request: NextRequest) {
 
     const eventData = validation.data!;
     const eventTime = new Date(eventData.timestamp!);
+    const usn = eventData.usn.toUpperCase();
 
     // Step 1: Write to Firestore attendance_logs collection
-    console.log("[API] Writing to Firestore:", eventData.usn);
+    console.log(`[API] Processing ${eventData.type} for USN: ${usn}`);
+
+    let firestoreId = "";
     try {
       const docRef = await addDoc(collection(dataDb, "attendance_logs"), {
-        usn: eventData.usn,
+        usn: usn,
         wardName: eventData.wardName,
         type: eventData.type,
         timestamp: Timestamp.fromDate(eventTime),
         parentId: eventData.parentId || null,
         createdAt: serverTimestamp(),
       });
-      console.log("[API] Firestore document created:", docRef.id);
+      firestoreId = docRef.id;
+      console.log(`[API] Success: Firestore document created (${firestoreId})`);
     } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
-      console.error("[API] Firestore write error:", errorMessage);
+      console.error("[API] Firestore Error:", error);
       return NextResponse.json(
-        { error: "Failed to save attendance record" },
+        { error: "Database write failed" },
         { status: 500 },
       );
     }
 
     // Step 2: Send OneSignal notification
-    console.log("[API] Preparing OneSignal notification for", eventData.usn);
+    console.log(`[API] Dispatching OneSignal notification to external_id: ${usn}`);
 
     const notificationPayload = formatAttendanceNotification(
       eventData.wardName,
-      eventData.usn,
+      usn,
       eventData.type,
       eventTime,
     );
 
-    // Send to parent (tagged by USN)
-    // In production, you would query Firestore to find the parent's OneSignal ID
-    // For now, we use the USN as the external user ID for OneSignal
-    notificationPayload.include_external_user_ids = [eventData.usn];
+    // Target the parent by USN (External User ID)
+    notificationPayload.include_external_user_ids = [usn];
 
-    const notificationResult =
-      await sendOneSignalNotification(notificationPayload);
+    const notificationResult = await sendOneSignalNotification(notificationPayload);
 
     if (!notificationResult.success) {
-      console.error(
-        "[API] OneSignal notification failed:",
-        notificationResult.error,
-      );
-      // Don't fail the entire request if notification fails
-      // The Firestore record is already saved
+      console.warn(`[API] Notification failed for ${usn}:`, notificationResult.error);
       return NextResponse.json(
         {
           success: true,
-          message: "Attendance recorded but notification delivery failed",
-          firestoreId: "recorded",
+          message: "Attendance logged, but notification failed",
+          firestoreId,
           notificationError: notificationResult.error,
         },
         { status: 202 },
       );
     }
 
-    console.log("[API] Success - Attendance logged and notification sent");
+    console.log(`[API] Complete: Attendance logged and notification sent for ${usn}`);
     return NextResponse.json(
       {
         success: true,
         message: "Attendance recorded and notification sent",
+        firestoreId,
         messageId: notificationResult.messageId,
       },
       { status: 200 },

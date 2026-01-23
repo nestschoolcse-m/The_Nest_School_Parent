@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
     ArrowLeft,
@@ -17,6 +17,28 @@ import { useAuth } from "@/contexts/AuthContext";
 export default function SettingsPage() {
     const { user, logout } = useAuth();
     const router = useRouter();
+
+    const [diagnostics, setDiagnostics] = useState({
+        status: "Loading...",
+        externalId: "Not set",
+        pushId: "None",
+        isOptedIn: false,
+    });
+
+    useEffect(() => {
+        const interval = setInterval(() => {
+            const os = (window as any).OneSignal;
+            if (os && os.User) {
+                setDiagnostics({
+                    status: os.User.PushSubscription?.optedIn ? "ACTIVE" : "INACTIVE",
+                    externalId: os.User.externalId || "Not set",
+                    pushId: os.User.PushSubscription?.id || "None",
+                    isOptedIn: !!os.User.PushSubscription?.optedIn,
+                });
+            }
+        }, 2000);
+        return () => clearInterval(interval);
+    }, []);
 
     const handleLogout = async () => {
         if (confirm("Are you sure you want to sign out?")) {
@@ -71,7 +93,7 @@ export default function SettingsPage() {
                 </div>
 
                 {/* Actions */}
-                <div className="space-y-4">
+                <div className="space-y-4 mb-8">
                     <button
                         onClick={async () => {
                             try {
@@ -91,9 +113,9 @@ export default function SettingsPage() {
                                 const data = await response.json();
 
                                 if (response.ok || response.status === 202) {
-                                  alert("A test activity log was successfully dispatched. Notification arriving shortly.");
+                                    alert("A test activity log was successfully dispatched. Notification arriving shortly.");
                                 } else {
-                                  throw new Error(data.error || "API error");
+                                    throw new Error(data.error || "API error");
                                 }
                             } catch (err: any) {
                                 console.error(err);
@@ -121,67 +143,53 @@ export default function SettingsPage() {
                     </button>
                 </div>
 
-                {/* Debug Section */}
+                {/* Diagnostics Section */}
                 <div className="mb-8 rounded-3xl border border-gray-100 bg-white shadow-sm overflow-hidden">
                     <div className="bg-gray-50/50 px-5 py-3 border-b border-gray-100 flex justify-between items-center">
                         <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">System Diagnostics</p>
-                        <button 
-                            onClick={async () => {
-                                if (confirm("This will clear all OneSignal data. Continue?")) {
-                                    if (window.OneSignal) {
-                                      await window.OneSignal.User.PushSubscription.optOut();
-                                      localStorage.removeItem('onesignal-push-id');
-                                      window.location.reload();
+                        <div className="flex gap-4">
+                            <button
+                                onClick={async () => {
+                                    if (confirm("This will clear all OneSignal data. Continue?")) {
+                                        const os = (window as any).OneSignal;
+                                        if (os) {
+                                            await os.User.PushSubscription.optOut();
+                                            localStorage.clear();
+                                            window.location.reload();
+                                        }
                                     }
-                                }
-                            }}
-                            className="text-[9px] font-bold text-red-500 uppercase hover:underline ml-2"
-                        >
-                            Hard Reset
-                        </button>
-                        <button 
-                            onClick={() => window.location.reload()}
-                            className="text-[9px] font-bold text-blue-500 uppercase hover:underline"
-                        >
-                            Refresh SDK
-                        </button>
+                                }}
+                                className="text-[9px] font-bold text-red-500 uppercase hover:underline"
+                            >
+                                Hard Reset
+                            </button>
+                            <button
+                                onClick={() => window.location.reload()}
+                                className="text-[9px] font-bold text-blue-500 uppercase hover:underline"
+                            >
+                                Refresh SDK
+                            </button>
+                        </div>
                     </div>
                     <div className="p-6 space-y-4">
                         <div className="flex justify-between items-center">
                             <span className="text-sm font-medium text-gray-500">Subscription Status</span>
-                            <span id="onesignal-status" className="text-xs font-bold text-gray-400">Loading...</span>
+                            <span className={`text-xs font-bold ${diagnostics.isOptedIn ? "text-green-500" : "text-red-500"}`}>
+                                {diagnostics.status}
+                            </span>
                         </div>
                         <div className="flex justify-between items-center">
                             <span className="text-sm font-medium text-gray-500">External ID</span>
-                            <span id="onesignal-ext-id" className="text-xs font-bold text-gray-400">Not set</span>
+                            <span className="text-xs font-bold text-gray-900">{diagnostics.externalId}</span>
                         </div>
                         <div className="space-y-1">
                             <span className="text-sm font-medium text-gray-500">Push Token</span>
-                            <p id="onesignal-push-id" className="text-[10px] font-mono text-gray-300 break-all bg-gray-50 p-2 rounded-lg">None</p>
+                            <p className="text-[10px] font-mono text-gray-400 break-all bg-gray-50 p-2 rounded-lg">
+                                {diagnostics.pushId}
+                            </p>
                         </div>
                     </div>
                 </div>
-
-                <script dangerouslySetInnerHTML={{ __html: `
-                    setInterval(() => {
-                        if (window.OneSignal && window.OneSignal.User) {
-                            const status = document.getElementById('onesignal-status');
-                            const extId = document.getElementById('onesignal-ext-id');
-                            const pushId = document.getElementById('onesignal-push-id');
-                            
-                            if (status) status.innerText = window.OneSignal.User.PushSubscription?.optedIn ? 'ACTIVE' : 'INACTIVE';
-                            if (extId) extId.innerText = window.OneSignal.User.externalId || 'Not set';
-                            if (pushId) pushId.innerText = window.OneSignal.User.PushSubscription?.id || 'None';
-                            
-                            if (status && window.OneSignal.User.PushSubscription?.optedIn) {
-                                status.classList.remove('text-gray-400', 'text-red-500');
-                                status.classList.add('text-green-500');
-                            } else if (status) {
-                                status.classList.add('text-red-500');
-                            }
-                        }
-                    }, 2000);
-                `}} />
 
                 {/* Developers Section */}
                 <div className="mt-16 text-center space-y-8">

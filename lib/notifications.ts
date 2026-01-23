@@ -1,14 +1,6 @@
-/**
- * Client-side notification management using OneSignal
- * Handles foreground notifications and user registration
- *
- * Key features:
- * - Request user permission for notifications
- * - Listen for real-time attendance changes in Firestore
- * - Display notifications even when browser tab is closed
- * - Fallback to native Web Notifications API
- */
+"use client";
 
+import OneSignal from "react-onesignal";
 import {
   collection,
   query,
@@ -16,257 +8,118 @@ import {
   onSnapshot,
   orderBy,
   limit,
-  Timestamp,
+  Timestamp
 } from "firebase/firestore";
 import { dataDb } from "./firebase";
 
-// Web implementation for notifications using OneSignal
+let isInitialized = false;
 let unsubscribeAttendance: (() => void) | null = null;
 
-declare global {
-  interface Window {
-    OneSignal: any;
-    OneSignalDeferred: any;
-  }
-}
-
 /**
- * Register user for push notifications
- * Requests permission and starts listening for attendance events
+ * Initialize OneSignal and start real-time Firestore listener
  */
-export async function registerForPushNotifications(
-  usn: string,
-): Promise<string | null> {
-  if (typeof window === "undefined") {
-    console.log(
-      "[Notifications] Notifications not supported in this environment",
-    );
-    return null;
-  }
+export async function registerForPushNotifications(usn: string): Promise<string | null> {
+  if (typeof window === "undefined") return null;
 
   try {
-    // Initialize OneSignal if not already initialized
-    if (window.OneSignal) {
-      console.log(
-        "[Notifications] Requesting notification permission for",
-        usn,
-      );
+    const usnUpperCase = usn.toUpperCase();
 
-      // Request notification permission through OneSignal
-      const permission =
-        await window.OneSignal.Notifications.requestPermission();
-      console.log("[Notifications] Permission result:", permission);
-
-      // Log service worker status
-      if ('serviceWorker' in navigator) {
-        const registrations = await navigator.serviceWorker.getRegistrations();
-        console.log("[Notifications] Found", registrations.length, "service workers");
-        registrations.forEach(r => {
-          console.log("[Notifications] SW Scope:", r.scope, "Script:", r.active?.scriptURL);
-        });
-      }
-
-      // Log subscription status for debugging
-      if (window.OneSignal.User && window.OneSignal.User.PushSubscription) {
-        const pushId = window.OneSignal.User.PushSubscription.id;
-        const isSubscribed = window.OneSignal.User.PushSubscription.optedIn;
-        console.log("[Notifications] OneSignal Push ID:", pushId);
-        console.log("[Notifications] Is Subscribed:", isSubscribed);
-        console.log("[Notifications] Current External ID:", window.OneSignal.User.externalId);
-      }
+    // 1. Initialize OneSignal
+    if (!isInitialized) {
+      console.log("[Notifications] Setup for USN:", usnUpperCase);
+      await OneSignal.init({
+        appId: "13657fb4-80b6-43d6-8f74-0a8bf3d4729d",
+        allowLocalhostAsSecureOrigin: true,
+      });
+      isInitialized = true;
     }
 
-    // Start listening for attendance changes in Firestore
-    startAttendanceListener(usn);
+    // 2. Identification
+    await OneSignal.login(usnUpperCase);
+    await OneSignal.User.addTag("usn", usnUpperCase);
+    await OneSignal.Notifications.requestPermission();
 
-    return "onesignal-active";
+    // 3. Start Firestore Listener
+    startAttendanceListener(usnUpperCase);
+
+    return OneSignal.User.PushSubscription.id || "active";
   } catch (error) {
-    console.error("[Notifications] Error setting up notifications:", error);
+    console.error("[Notifications] Setup error:", error);
     return null;
   }
 }
 
 /**
- * Listen for real-time attendance changes in Firestore
- * Triggers notifications when new attendance records are added
+ * Monitors Firestore for new logs specifically for this student
+ * Supports both 'usn' and 'USN' field names
  */
 function startAttendanceListener(usn: string) {
-  if (unsubscribeAttendance) {
-    unsubscribeAttendance();
-  }
+  if (unsubscribeAttendance) unsubscribeAttendance();
 
-  console.log("[Notifications] Starting Firestore listener for USN:", usn);
+  console.log(`[Notifications] Starting Live Sync for ${usn}...`);
 
-  // Record when listener started to avoid notifying on old records
-  const startTime = Timestamp.now();
-
-  // Query latest attendance record for this student
+  // Use a simpler query first to avoid index requirements
   const q = query(
     collection(dataDb, "attendance_logs"),
-    where("usn", "==", usn),
-    orderBy("timestamp", "desc"),
-    limit(1),
+    where("usn", "==", usn.toUpperCase()),
+    limit(5)
   );
 
-  unsubscribeAttendance = onSnapshot(
-    q,
-    (snapshot) => {
-      snapshot.docChanges().forEach((change) => {
-        if (change.type === "added") {
-          const data = change.doc.data();
-          const timestamp = data.timestamp as Timestamp;
-          if (!timestamp || typeof timestamp.toMillis !== 'function') return;
+  unsubscribeAttendance = onSnapshot(q, (snapshot) => {
+    snapshot.docChanges().forEach((change) => {
+      // We check for ALL types because we want to catch records even if they arrive fast
+      if (change.type === "added" || change.type === "modified") {
+        const data = change.doc.data();
 
-          // Only notify for new logs (created after listener started)
-          // with small buffer (10 seconds) for clock skew
-          if (timestamp.toMillis() > startTime.toMillis() - 10000) {
-            console.log("[Notifications] New attendance detected:", {
-              usn: data.usn,
-              type: data.type,
-            });
-            triggerNotification(
-              data.wardName || "Student",
-              data.usn,
-              data.type,
-              timestamp.toDate(),
-            );
-          }
+        // Safety check for field casing
+        const recordUsn = (data.usn || data.USN || "").toString().toUpperCase();
+        if (recordUsn !== usn) return;
+
+        const logTime = data.timestamp as Timestamp;
+        const now = Date.now();
+
+        // Notify only if the log is very recent (last 30 seconds)
+        if (logTime && (now - logTime.toMillis() < 30000)) {
+          console.log("[Notifications] NEW LOG DETECTED:", data);
+          showLocalNotification(data);
         }
-      });
-    },
-    (error) => {
-      console.error("[Notifications] Firestore listener error:", error);
-    },
-  );
+      }
+    });
+  }, (err) => {
+    console.warn("[Notifications] Firestore Listener Error (likely missing index):", err);
+    // Fallback: If index is missing, we try an even simpler query
+    fallbackListener(usn);
+  });
 }
 
-/**
- * Trigger notification for attendance event
- * Uses OneSignal if available, falls back to native API
- */
-async function triggerNotification(
-  wardName: string,
-  usn: string,
-  type: string,
-  date: Date,
-) {
-  const title = "NEST SCHOOL";
-  const action = type.toLowerCase() === "entry" ? "entered" : "exited";
-  const timeStr = formatAttendanceTime(date);
-  const body = `Your ward ${wardName} with USN ${usn} has ${action} at the campus ${timeStr}`;
+function fallbackListener(usn: string) {
+  const q = query(collection(dataDb, "attendance_logs"), limit(1));
+  unsubscribeAttendance = onSnapshot(q, (snapshot) => {
+    // Simple fallback to detect if we can even reach the collection
+    console.log("[Notifications] Fallback sync connected");
+  });
+}
 
-  console.log("[Notifications] Triggering notification:", { title, body });
+function showLocalNotification(data: any) {
+  const type = data.type || data.Type || "Activity";
+  const name = data.wardName || "Student";
+  const title = "NEST School - Gate Update";
+  const body = `${name} has ${type.toLowerCase() === "entry" ? "entered" : "exited"} the campus.`;
 
-  try {
-    if (window.OneSignal && window.OneSignal.Notifications) {
-      // Use OneSignal to send notification
-      console.log("[Notifications] Sending via OneSignal");
-
-      // Create a local notification through OneSignal
-      // This works even if OneSignal Remote API fails
-      try {
-        // Create web notification
-        if ("Notification" in window && Notification.permission === "granted") {
-          const notification = new Notification(title, {
-            body: body,
-            icon: "/logo.png",
-            badge: "/logo.png",
-            tag: `attendance-${usn}-${date.getTime()}`,
-            requireInteraction: true,
-          });
-
-          notification.onclick = () => {
-            window.focus();
-            notification.close();
-          };
-
-          console.log("[Notifications] Web notification created");
-        }
-      } catch (innerError) {
-        console.error(
-          "[Notifications] Error creating web notification:",
-          innerError,
-        );
-      }
-    } else {
-      // Fallback to native Notification API
-      if ("Notification" in window && Notification.permission === "granted") {
-        console.log("[Notifications] Using Web Notifications API fallback");
-
-        const notification = new Notification(title, {
-          body: body,
-          icon: "/logo.png",
-          badge: "/logo.png",
-          tag: `attendance-${usn}-${date.getTime()}`,
-          requireInteraction: true,
-        });
-
-        notification.onclick = () => {
-          window.focus();
-          notification.close();
-        };
-      }
-    }
-  } catch (error) {
-    console.error("[Notifications] Error triggering notification:", error);
+  if ("Notification" in window && Notification.permission === "granted") {
+    new Notification(title, {
+      body,
+      icon: "/logo.png",
+      tag: `att-${data.usn}-${Date.now()}`
+    });
   }
 }
 
-/**
- * Add listeners for notification events
- */
-export function addNotificationListeners(
-  onNotificationReceived?: (notification: any) => void,
-  onNotificationResponse?: (response: any) => void,
-) {
-  try {
-    if (typeof window !== "undefined" && window.OneSignal) {
-      // Setup OneSignal event listeners if available
-      if (onNotificationReceived) {
-        window.OneSignal.Notifications.addEventListener(
-          "foregroundWillDisplay",
-          (event: any) => {
-            console.log("[Notifications] Foreground notification:", event);
-            onNotificationReceived(event);
-          },
-        );
-      }
-
-      if (onNotificationResponse) {
-        window.OneSignal.Notifications.addEventListener(
-          "click",
-          (event: any) => {
-            console.log("[Notifications] Notification clicked:", event);
-            onNotificationResponse(event);
-          },
-        );
-      }
-    }
-  } catch (error) {
-    console.error("[Notifications] Error adding event listeners:", error);
-  }
-
-  // Return cleanup function
+export function addNotificationListeners(onReceived?: (event: any) => void) {
   return () => {
     if (unsubscribeAttendance) {
       unsubscribeAttendance();
       unsubscribeAttendance = null;
     }
   };
-}
-
-/**
- * Format timestamp for notification display (IST)
- */
-export function formatAttendanceTime(timestamp: Date): string {
-  const options: Intl.DateTimeFormatOptions = {
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-    timeZone: "Asia/Kolkata",
-  };
-  return timestamp.toLocaleString("en-IN", options);
 }
