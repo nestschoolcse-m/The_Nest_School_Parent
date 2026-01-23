@@ -15,11 +15,25 @@ import { dataDb } from "./firebase";
 let isInitialized = false;
 let unsubscribeAttendance: (() => void) | null = null;
 
+const DEFAULT_APP_ID = "13657fb4-80b6-43d6-8f74-0a8bf3d4729d";
+
 /**
- * Initialize OneSignal and start real-time Firestore listener
+ * Initialize OneSignal and start real-time Firestore listener.
+ * OneSignal only allows one Site URL per app in the dashboard; it must exactly
+ * match the page origin (e.g. https://your-app.vercel.app for production).
+ * Set NEXT_PUBLIC_ONESIGNAL_SITE_URL to your production URL on Vercel so we
+ * skip init on mismatched origins and avoid "Can only be used on: ..." errors.
  */
 export async function registerForPushNotifications(usn: string): Promise<string | null> {
   if (typeof window === "undefined") return null;
+
+  const allowedOrigin = process.env.NEXT_PUBLIC_ONESIGNAL_SITE_URL;
+  if (allowedOrigin && window.location.origin !== allowedOrigin) {
+    // OneSignal app's Site URL doesn't match this origin; skip to avoid SDK errors.
+    return null;
+  }
+
+  const appId = process.env.NEXT_PUBLIC_ONESIGNAL_APP_ID || DEFAULT_APP_ID;
 
   try {
     const usnUpperCase = usn.toUpperCase();
@@ -28,7 +42,7 @@ export async function registerForPushNotifications(usn: string): Promise<string 
     if (!isInitialized) {
       console.log("[Notifications] Setup for USN:", usnUpperCase);
       await OneSignal.init({
-        appId: "13657fb4-80b6-43d6-8f74-0a8bf3d4729d",
+        appId,
         allowLocalhostAsSecureOrigin: true,
       });
       isInitialized = true;
@@ -42,7 +56,8 @@ export async function registerForPushNotifications(usn: string): Promise<string 
     // 3. Start Firestore Listener
     startAttendanceListener(usnUpperCase);
 
-    return OneSignal.User.PushSubscription.id || "active";
+    const subId = OneSignal.User?.PushSubscription?.id;
+    return (typeof subId === "string" ? subId : null) || "active";
   } catch (error) {
     console.error("[Notifications] Setup error:", error);
     return null;
