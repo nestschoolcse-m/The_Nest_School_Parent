@@ -1,0 +1,294 @@
+/\*\*
+
+- NEST School Parent App - OneSignal Web Push Integration Guide
+-
+- This guide documents the complete attendance-based push notification system
+- using OneSignal Web Push for the NEST School Parent App.
+-
+- ============================================================================
+- ARCHITECTURE OVERVIEW
+- ============================================================================
+-
+- 1.  CLIENT-SIDE (Browser)
+- - OneSignal SDK (v16) loaded via CDN
+- - Service Workers (OneSignalSDKWorker.js, OneSignalSDKUpdaterWorker.js)
+- - Listen for attendance changes in Firestore (real-time)
+- - Display notifications when browser tab is closed
+-
+- 2.  SERVER-SIDE (Next.js API Route)
+- - POST /api/attendance receives attendance events
+- - Writes to Firestore: attendance_logs collection
+- - Sends OneSignal notification via REST API
+- - Secure: REST API key stored server-side only
+-
+- 3.  BACKEND SERVICES
+- - Firebase Firestore (event storage)
+- - OneSignal Web Push (notification delivery)
+- - No Cloud Functions (Spark plan compatible)
+-
+- ============================================================================
+- FILE STRUCTURE
+- ============================================================================
+-
+- Configuration:
+- .env.local - Environment variables (API keys)
+- app/layout.tsx - OneSignal SDK initialization
+-
+- Service Workers (Public):
+- public/OneSignalSDKWorker.js - Background notification handler
+- public/OneSignalSDKUpdaterWorker.js - SW update handler
+-
+- API Routes:
+- app/api/attendance/route.ts - POST endpoint for events
+-
+- Utilities:
+- lib/firebase.ts - Firestore initialization
+- lib/oneSignalServer.ts - Server-side OneSignal operations
+- lib/notifications.ts - Client-side notification setup
+- lib/errorHandling.ts - Error handling & logging
+-
+- Context:
+- contexts/AuthContext.tsx - User auth & OneSignal tagging
+-
+- Documentation:
+- FIRESTORE_SECURITY_RULES.txt - Security rules to apply
+- BUILD_INSTRUCTIONS.md - This file
+-
+- ============================================================================
+- SETUP CHECKLIST
+- ============================================================================
+-
+- [ ] 1.  ENVIRONMENT VARIABLES
+-        File: .env.local
+-        Add your OneSignal REST API Key:
+-
+-        NEXT_PUBLIC_ONESIGNAL_APP_ID=13657fb4-80b6-43d6-8f74-0a8bf3d4729d
+-        ONESIGNAL_REST_API_KEY=<your_rest_api_key>
+-        NEXT_PUBLIC_ONESIGNAL_SAFARI_WEB_ID=web.onesignal.auto.3cfe9839-ceab-4809-9212-172318dbfb2e
+-
+- [ ] 2.  FIREBASE SECURITY RULES
+-        File: FIRESTORE_SECURITY_RULES.txt
+-        Copy the rules and apply in Firebase Console:
+-
+-        a. Go to https://console.firebase.google.com
+-        b. Select project: nesterp-813b8
+-        c. Firestore Database > Rules
+-        d. Replace content with rules from FIRESTORE_SECURITY_RULES.txt
+-        e. Click "Publish"
+-
+- [ ] 3.  VERIFY FILE STRUCTURE
+-        Confirm all files exist:
+-        - app/layout.tsx (updated with OneSignal scripts)
+-        - app/api/attendance/route.ts (new API endpoint)
+-        - public/OneSignalSDKWorker.js (SW file)
+-        - public/OneSignalSDKUpdaterWorker.js (SW updater file)
+-        - lib/oneSignalServer.ts (server utilities)
+-        - lib/notifications.ts (client utilities)
+-        - lib/errorHandling.ts (logging & errors)
+-
+- [ ] 4.  BUILD THE APPLICATION
+-        npm install
+-        npm run build
+-
+-        Check for any compilation errors
+-
+- [ ] 5.  TEST LOCALLY
+-        npm run dev
+-
+-        a. Open http://localhost:3000
+-        b. Disable notification popups if prompted
+-        c. Login with test credentials
+-        d. Check browser console for OneSignal init messages
+-        e. Send test event to /api/attendance
+-
+- [ ] 6.  TEST NOTIFICATION DELIVERY
+-        Use curl or Postman to test API:
+-
+-        POST http://localhost:3000/api/attendance
+-        Content-Type: application/json
+-
+-        {
+-          "usn": "USN12345",
+-          "wardName": "John Doe",
+-          "type": "ENTRY",
+-          "timestamp": "2024-01-22T10:30:00Z",
+-          "parentId": "parent@example.com"
+-        }
+-
+- [ ] 7.  TEST WITH BROWSER CLOSED
+-        - Ensure OneSignal service workers are registered
+-        - Close browser completely
+-        - Send attendance event via API
+-        - Re-open browser and verify notification
+-
+- ============================================================================
+- WORKFLOW: FROM ATTENDANCE TO NOTIFICATION
+- ============================================================================
+-
+- 1.  ATTENDANCE SYSTEM (External)
+- - Barcode scanning at gate
+- - Records student entry/exit
+- - Calls POST /api/attendance
+-
+- 2.  API PROCESSING
+- - Validates request data
+- - Writes to Firestore: attendance_logs
+- - Formats notification payload
+- - Sends via OneSignal REST API
+-
+- 3.  FIRESTORE EVENT
+- - Event added to attendance_logs collection
+- - Real-time listener triggers on client
+- - Checks if event is recent (not historical)
+-
+- 4.  CLIENT-SIDE LISTENER
+- - Detects new attendance record
+- - Displays notification immediately (foreground)
+- - OneSignal service worker handles background
+-
+- 5.  NOTIFICATION DELIVERY
+- - OneSignal background service worker activates
+- - Displays notification even when browser closed
+- - Parent sees: "Your ward [NAME] with USN [XXX] has entered/exited at [TIME]"
+- - Works on: Web, Android Chrome, iOS PWA
+-
+- ============================================================================
+- SECURITY IMPLEMENTATION
+- ============================================================================
+-
+- CLIENT-SIDE PROTECTION:
+- ✓ OneSignal SDK loaded securely (CDK)
+- ✓ No API keys exposed in client code
+- ✓ Authentication required for access
+-
+- SERVER-SIDE PROTECTION:
+- ✓ REST API key stored in .env.local (not in code)
+- ✓ API key never sent to client
+- ✓ Only server can write to attendance_logs
+- ✓ Firebase security rules prevent direct client writes
+-
+- DATA VALIDATION:
+- ✓ Request body validated for type and length
+- ✓ USN/wardName sanitized and uppercased
+- ✓ Event type restricted to ENTRY/EXIT
+- ✓ Timestamp validated and normalized
+-
+- FIRESTORE RULES:
+- ✓ Client cannot write directly to attendance_logs
+- ✓ Only service account (server) can write
+- ✓ Parent credentials are read-protected
+- ✓ Each document validated on write
+-
+- ============================================================================
+- DATA FLOW DIAGRAM
+- ============================================================================
+-
+- ATTENDANCE SYSTEM SERVER API FIRESTORE ONESIGNAL
+- ┌─────────────────┐ ┌──────────┐ ┌─────────────┐ ┌─────────┐\n _ │ Gate Scanner │ │ API │ │ attendance │ │ REST │\n _ │ (Barcode) │───────→│ Route │─────────→│ \_logs │ │ API │\n _ │ │ POST │ POST │ Write │ │ │ │\n _ │ ENTRY/EXIT │ /api/ │ /api/ │ (Server │ usn │ │ Segment │\n _ │ │attend │ attend │ only) │ wardName │ │ by USN │\n _ └─────────────────┘ ance │ ance │ │ type │ │ & Send │\n _ {\n _ PARENT (Client) usn │ Validate │ │ timestamp │ │ Notify │\n _ ┌───────────────────┐ │ & │ │ │ └─────────┘\n _ │ Browser/App │ │ Format │ │ parentId │ ↓\n _ │ OneSignal SDK │←─────│ │ └─────────────┘ NOTIFICATION\n _ │ Service Worker │ Real │ Notify │ ↑ ┌──────────────┐\n _ │ │ time │ Segment │ │ │ Web Push │\n _ │ Firestore Listen │ ←────┤ │ │ │ (Browser) │\n _ │ (Real-time) │ Event └──────────┘ │ │ │\n _ │ │ Add Client │ │ \"Your ward │\n _ │ Display Notif │ Detect listens │ │ [NAME] has │\n _ │ (if closed) │ Firestore (Real-time) │ │ entered...\" │\n _ └───────────────────┘ listener ─────────────────────────→└──────────────┘\n _ \n _ ============================================================================\n _ ERROR HANDLING & RECOVERY\n _ ============================================================================\n _
+- SCENARIO 1: OneSignal API Fails
+- - API records attendance to Firestore ✓
+- - Returns 202 with notification warning
+- - Firestore listener still triggers on client
+- - Parent sees notification from Firestore listener
+- - Result: Notification still delivered via Firestore listener
+-
+- SCENARIO 2: Network Offline
+- - Client notification listener continues in background
+- - Service Worker maintains push subscription
+- - When online, receives pending notifications
+- - OneSignal handles retry logic
+-
+- SCENARIO 3: Browser Closed
+- - OneSignal service worker stays active
+- - Receives notifications via service worker
+- - Displays even with browser closed
+- - Push persists in OS notification center
+-
+- SCENARIO 4: Invalid Request
+- - API validates all fields
+- - Returns 400 with error message
+- - Firestore not touched
+- - Notification not sent
+-
+- ============================================================================
+- MONITORING & LOGGING
+- ============================================================================
+-
+- Browser Console Logs:
+- [OneSignal] = OneSignal SDK initialization
+- [API] = API endpoint logs
+- [Notifications] = Client notification setup
+- [Auth] = Authentication & tagging
+-
+- Server Logs (npm run dev):
+- [API] Attendance request received
+- [API] Writing to Firestore
+- [API] Sending OneSignal notification
+- [OneSignal] API request details
+-
+- Firebase Console:
+- View attendance_logs collection
+- Check for new documents on each event
+- Monitor read/write stats
+-
+- OneSignal Dashboard:
+- Messages tab: View sent notifications
+- Analytics: Delivery rates
+- Users: Verify tagged users
+-
+- ============================================================================
+- PRODUCTION CONSIDERATIONS
+- ============================================================================
+-
+- BEFORE DEPLOYING:
+-
+- 1.  SECURITY
+- - Rotate REST API key periodically
+- - Use separate Firebase project for prod
+- - Enable Firestore point-in-time recovery
+- - Set up audit logging
+-
+- 2.  PERFORMANCE
+- - Monitor API response times
+- - Set up CloudFlare or CDN for static assets
+- - Consider read replica for Firestore
+- - Cache frequently accessed data
+-
+- 3.  RELIABILITY
+- - Set up uptime monitoring
+- - Configure error alerting
+- - Implement request rate limiting
+- - Add retry logic for failed notifications
+-
+- 4.  COMPLIANCE
+- - Review privacy policy for notifications
+- - Add opt-out mechanism
+- - Store consent records
+- - Comply with platform notification guidelines
+-
+- 5.  TESTING
+- - Integration tests for API endpoint
+- - E2E tests for notification flow
+- - Load testing (simulate peak attendance)
+- - Cross-browser testing
+-
+- ============================================================================
+- TROUBLESHOOTING
+- ============================================================================
+-
+- Issue: \"OneSignal is undefined\"
+- → Check OneSignal SDK is loaded in layout.tsx
+- → Verify script strategy is \"afterInteractive\"
+- → Clear browser cache
+-
+- Issue: \"Notifications not showing\"
+- → Check notification permissions (browser settings)
+- → Verify OneSignal appId in .env.local
+- → Check Firestore listener is active
+- → Review browser console for errors
+-
+- Issue: \"Service worker not found\"
+- → Confirm OneSignalSDKWorker.js in /public folder
+- → Check network tab for 404 errors
+- → Verify OneSignal can access /public folder\n _ → Check browser service worker registration\n _
+- Issue: \"Firestore writes failing\"\n _ → Check Firebase credentials in lib/firebase.ts\n _ → Verify Firestore security rules allow writes\n _ → Check projectId matches console.firebase.google.com\n _ \n _ Issue: \"API returns 500 error\"\n _ → Check ONESIGNAL_REST_API_KEY in .env.local\n _ → Verify OneSignal app exists\n _ → Check request body JSON format\n _ → Review server logs for detailed error\n _ \n _ ============================================================================\n _ TESTING CHECKLIST\n _ ============================================================================\n _ \n _ [ ] Build succeeds without errors\n _ npm run build\n _ \n _ [ ] Dev server starts\n _ npm run dev\n _ \n _ [ ] OneSignal SDK loads in browser\n _ Check console: \"[OneSignal] Initializing...\"\n _ \n _ [ ] Service workers register\n _ DevTools → Application → Service Workers\n _ \n _ [ ] User can login and get tagged\n _ Check OneSignal console for user tags\n _ \n _ [ ] API endpoint accepts POST requests\n _ curl -X POST http://localhost:3000/api/attendance \\\\\n _ -H \"Content-Type: application/json\" \\\\\n _ -d '{...}'\n _ \n _ [ ] Firestore records are created\n _ Check Firebase Console → Firestore → attendance_logs\n _ \n _ [ ] Notification displays in foreground\n _ Keep browser open, send event\n _ \n _ [ ] Notification displays when browser closed\n _ Close browser, send event, reopen\n _ \n _ [ ] Notification works on mobile (PWA)\n _ Add to home screen on Android/iOS\n _ Close app, send event, check notification\n _ \n _ ============================================================================\n _ NEXT STEPS\n _ ============================================================================\n _ \n _ 1. Complete the setup checklist above\n _ 2. Run npm install && npm run build\n _ 3. Test locally with npm run dev\n _ 4. Set up production database (Firebase project)\n _ 5. Configure OneSignal for production\n _ 6. Deploy to production platform (Vercel, etc.)\n _ 7. Monitor notifications dashboard\n _ 8. Gather parent feedback and iterate\n _ \n _ ============================================================================\n _/

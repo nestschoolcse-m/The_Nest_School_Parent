@@ -12,7 +12,7 @@ const dataApp = admin.initializeApp(
 
 const mainApp = admin.initializeApp(
   {
-    projectId: "nest-erp-app",
+    projectId: "nesterp-813b8",
   },
   "main"
 );
@@ -30,20 +30,6 @@ function formatTimestamp(date: Date): string {
     month: "short",
     year: "numeric",
   });
-}
-
-// Get notification title based on type
-function getNotificationTitle(studentName: string, type: string): string {
-  switch (type.toUpperCase()) {
-    case "ENTRY":
-      return `🏫 ${studentName} - Arrived at School`;
-    case "EXIT":
-      return `🚪 ${studentName} - Left School`;
-    case "SPORTS":
-      return `⚽ ${studentName} - Sports Activity`;
-    default:
-      return `${studentName} - ${type}`;
-  }
 }
 
 // Helper to send notification via Expo Push API
@@ -97,7 +83,7 @@ export const sendAttendanceNotification = functions
       if (!data) return null;
 
       const usn = data.usn as string;
-      const type = data.type as string;
+      const type = data.type as string; // ENTRY or EXIT
       const timestamp = data.timestamp?.toDate() || new Date();
 
       console.log(`New attendance log: ${usn} - ${type}`);
@@ -122,8 +108,12 @@ export const sendAttendanceNotification = functions
         return null;
       }
 
-      const title = getNotificationTitle(studentName, type);
-      const body = `Recorded at ${formatTimestamp(timestamp)}`;
+      // Title: The NEST School
+      // Body: Your Ward <WARDNAME> with USN <USNNUMBER> has entered/exited the campus at <TIMESTAMP>
+      const title = "The NEST School";
+      const action = type.toLowerCase() === "entry" ? "entered" : "exited";
+      const body = `Your Ward ${studentName} with USN ${usn} has ${action} the campus at ${formatTimestamp(timestamp)}`;
+      
       const payload = {
         usn,
         type,
@@ -137,7 +127,7 @@ export const sendAttendanceNotification = functions
         return response;
       }
 
-      // Default to FCM for native tokens
+      // Default to FCM for native/web tokens
       const message: admin.messaging.Message = {
         token: fcmToken,
         notification: { title, body },

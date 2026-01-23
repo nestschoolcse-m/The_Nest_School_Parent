@@ -75,19 +75,29 @@ export default function SettingsPage() {
                     <button
                         onClick={async () => {
                             try {
-                                const { collection, addDoc, serverTimestamp } = await import("firebase/firestore");
-                                const { dataDb } = await import("@/lib/firebase");
-
-                                await addDoc(collection(dataDb, "attendance_logs"), {
-                                    usn: user?.usn,
-                                    type: "ENTRY",
-                                    timestamp: serverTimestamp(),
+                                const response = await fetch("/api/attendance", {
+                                    method: "POST",
+                                    headers: {
+                                        "Content-Type": "application/json",
+                                    },
+                                    body: JSON.stringify({
+                                        usn: user?.usn,
+                                        wardName: "Test Student",
+                                        type: "ENTRY",
+                                        timestamp: new Date().toISOString(),
+                                    }),
                                 });
 
-                                alert("A test activity log was successfully dispatched. Notification arriving shortly.");
-                            } catch (err) {
+                                const data = await response.json();
+
+                                if (response.ok || response.status === 202) {
+                                  alert("A test activity log was successfully dispatched. Notification arriving shortly.");
+                                } else {
+                                  throw new Error(data.error || "API error");
+                                }
+                            } catch (err: any) {
                                 console.error(err);
-                                alert("Authentication or network error.");
+                                alert(`Notification error: ${err.message}`);
                             }
                         }}
                         className="w-full flex items-center p-5 rounded-3xl border border-gray-100 bg-gray-50/50 hover:bg-gray-100 transition-colors group"
@@ -110,6 +120,68 @@ export default function SettingsPage() {
                         <ChevronRight size={18} className="text-red-200 group-hover:text-red-700 transition-colors" />
                     </button>
                 </div>
+
+                {/* Debug Section */}
+                <div className="mb-8 rounded-3xl border border-gray-100 bg-white shadow-sm overflow-hidden">
+                    <div className="bg-gray-50/50 px-5 py-3 border-b border-gray-100 flex justify-between items-center">
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">System Diagnostics</p>
+                        <button 
+                            onClick={async () => {
+                                if (confirm("This will clear all OneSignal data. Continue?")) {
+                                    if (window.OneSignal) {
+                                      await window.OneSignal.User.PushSubscription.optOut();
+                                      localStorage.removeItem('onesignal-push-id');
+                                      window.location.reload();
+                                    }
+                                }
+                            }}
+                            className="text-[9px] font-bold text-red-500 uppercase hover:underline ml-2"
+                        >
+                            Hard Reset
+                        </button>
+                        <button 
+                            onClick={() => window.location.reload()}
+                            className="text-[9px] font-bold text-blue-500 uppercase hover:underline"
+                        >
+                            Refresh SDK
+                        </button>
+                    </div>
+                    <div className="p-6 space-y-4">
+                        <div className="flex justify-between items-center">
+                            <span className="text-sm font-medium text-gray-500">Subscription Status</span>
+                            <span id="onesignal-status" className="text-xs font-bold text-gray-400">Loading...</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                            <span className="text-sm font-medium text-gray-500">External ID</span>
+                            <span id="onesignal-ext-id" className="text-xs font-bold text-gray-400">Not set</span>
+                        </div>
+                        <div className="space-y-1">
+                            <span className="text-sm font-medium text-gray-500">Push Token</span>
+                            <p id="onesignal-push-id" className="text-[10px] font-mono text-gray-300 break-all bg-gray-50 p-2 rounded-lg">None</p>
+                        </div>
+                    </div>
+                </div>
+
+                <script dangerouslySetInnerHTML={{ __html: `
+                    setInterval(() => {
+                        if (window.OneSignal && window.OneSignal.User) {
+                            const status = document.getElementById('onesignal-status');
+                            const extId = document.getElementById('onesignal-ext-id');
+                            const pushId = document.getElementById('onesignal-push-id');
+                            
+                            if (status) status.innerText = window.OneSignal.User.PushSubscription?.optedIn ? 'ACTIVE' : 'INACTIVE';
+                            if (extId) extId.innerText = window.OneSignal.User.externalId || 'Not set';
+                            if (pushId) pushId.innerText = window.OneSignal.User.PushSubscription?.id || 'None';
+                            
+                            if (status && window.OneSignal.User.PushSubscription?.optedIn) {
+                                status.classList.remove('text-gray-400', 'text-red-500');
+                                status.classList.add('text-green-500');
+                            } else if (status) {
+                                status.classList.add('text-red-500');
+                            }
+                        }
+                    }, 2000);
+                `}} />
 
                 {/* Developers Section */}
                 <div className="mt-16 text-center space-y-8">
