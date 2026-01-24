@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useMemo } from "react";
-import { ArrowDownCircle, ArrowUpCircle, Bike, Clock } from "lucide-react";
+import { ArrowDownCircle, ArrowUpCircle, Bike, Clock,UserPlus,UserMinus } from "lucide-react";
 import { AttendanceLog } from "@/hooks/useAttendance";
 import { Badge, getAttendanceVariant } from "./ui/Badge";
 import { getStudentClass, getClassTimings, getAttendanceStatus } from "@/lib/studentUtils";
@@ -20,9 +20,9 @@ export function AttendanceItem({ log }: AttendanceItemProps) {
   const Icon = useMemo(() => {
     switch (log.type) {
       case "ENTRY":
-        return ArrowDownCircle;
+        return UserPlus;
       case "EXIT":
-        return ArrowUpCircle;
+        return UserMinus;
       default:
         return Bike;
     }

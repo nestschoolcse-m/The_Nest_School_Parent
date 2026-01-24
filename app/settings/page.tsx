@@ -13,11 +13,12 @@ import {
     User
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import {useStudent} from "@/hooks/useStudent";
 
 export default function SettingsPage() {
     const { user, logout } = useAuth();
     const router = useRouter();
-
+    const { student, loading: studentLoading } = useStudent(user?.usn || null);
     const [diagnostics, setDiagnostics] = useState({
         status: "Loading...",
         externalId: "Not set",
@@ -27,14 +28,20 @@ export default function SettingsPage() {
 
     useEffect(() => {
         const interval = setInterval(() => {
-            const os = (window as any).OneSignal;
-            if (os && os.User) {
-                setDiagnostics({
-                    status: os.User.PushSubscription?.optedIn ? "ACTIVE" : "INACTIVE",
-                    externalId: os.User.externalId || "Not set",
-                    pushId: os.User.PushSubscription?.id || "None",
-                    isOptedIn: !!os.User.PushSubscription?.optedIn,
-                });
+            try {
+                const os = (window as any)?.OneSignal;
+                const u = os?.User;
+                const sub = u?.PushSubscription;
+                if (os && u != null) {
+                    setDiagnostics({
+                        status: sub?.optedIn ? "ACTIVE" : "INACTIVE",
+                        externalId: (typeof u.externalId === "string" ? u.externalId : null) || "Not set",
+                        pushId: (typeof sub?.id === "string" ? sub.id : null) || "None",
+                        isOptedIn: !!sub?.optedIn,
+                    });
+                }
+            } catch {
+                // OneSignal may be uninitialized or in error state (e.g. wrong Site URL)
             }
         }, 2000);
         return () => clearInterval(interval);
@@ -76,8 +83,8 @@ export default function SettingsPage() {
                             <User size={28} />
                         </div>
                         <div className="flex-1">
-                            <p className="text-xl font-bold text-gray-900 tracking-tight">{user?.usn}</p>
-                            <p className="text-xs font-medium text-gray-400">Secured Portal Access</p>
+                            <p className="text-xl font-bold text-gray-900 tracking-tight">{student?.fatherName || student?.motherName || user.usn}</p>
+                            
                         </div>
                     </div>
                 </div>
@@ -94,42 +101,8 @@ export default function SettingsPage() {
 
                 {/* Actions */}
                 <div className="space-y-4 mb-8">
-                    <button
-                        onClick={async () => {
-                            try {
-                                const response = await fetch("/api/attendance", {
-                                    method: "POST",
-                                    headers: {
-                                        "Content-Type": "application/json",
-                                    },
-                                    body: JSON.stringify({
-                                        usn: user?.usn,
-                                        wardName: "Test Student",
-                                        type: "ENTRY",
-                                        timestamp: new Date().toISOString(),
-                                    }),
-                                });
-
-                                const data = await response.json();
-
-                                if (response.ok || response.status === 202) {
-                                    alert("A test activity log was successfully dispatched. Notification arriving shortly.");
-                                } else {
-                                    throw new Error(data.error || "API error");
-                                }
-                            } catch (err: any) {
-                                console.error(err);
-                                alert(`Notification error: ${err.message}`);
-                            }
-                        }}
-                        className="w-full flex items-center p-5 rounded-3xl border border-gray-100 bg-gray-50/50 hover:bg-gray-100 transition-colors group"
-                    >
-                        <div className="h-10 w-10 shrink-0 rounded-xl bg-white border border-gray-100 flex items-center justify-center mr-4">
-                            <Flashlight size={20} className="text-gray-900" />
-                        </div>
-                        <span className="flex-1 text-left font-bold text-gray-900">Test System Notification</span>
-                        <ChevronRight size={18} className="text-gray-300 group-hover:text-gray-900 transition-colors" />
-                    </button>
+                   
+                  
 
                     <button
                         onClick={handleLogout}
@@ -143,73 +116,27 @@ export default function SettingsPage() {
                     </button>
                 </div>
 
-                {/* Diagnostics Section */}
-                <div className="mb-8 rounded-3xl border border-gray-100 bg-white shadow-sm overflow-hidden">
-                    <div className="bg-gray-50/50 px-5 py-3 border-b border-gray-100 flex justify-between items-center">
-                        <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">System Diagnostics</p>
-                        <div className="flex gap-4">
-                            <button
-                                onClick={async () => {
-                                    if (confirm("This will clear all OneSignal data. Continue?")) {
-                                        const os = (window as any).OneSignal;
-                                        if (os) {
-                                            await os.User.PushSubscription.optOut();
-                                            localStorage.clear();
-                                            window.location.reload();
-                                        }
-                                    }
-                                }}
-                                className="text-[9px] font-bold text-red-500 uppercase hover:underline"
-                            >
-                                Hard Reset
-                            </button>
-                            <button
-                                onClick={() => window.location.reload()}
-                                className="text-[9px] font-bold text-blue-500 uppercase hover:underline"
-                            >
-                                Refresh SDK
-                            </button>
-                        </div>
-                    </div>
-                    <div className="p-6 space-y-4">
-                        <div className="flex justify-between items-center">
-                            <span className="text-sm font-medium text-gray-500">Subscription Status</span>
-                            <span className={`text-xs font-bold ${diagnostics.isOptedIn ? "text-green-500" : "text-red-500"}`}>
-                                {diagnostics.status}
-                            </span>
-                        </div>
-                        <div className="flex justify-between items-center">
-                            <span className="text-sm font-medium text-gray-500">External ID</span>
-                            <span className="text-xs font-bold text-gray-900">{diagnostics.externalId}</span>
-                        </div>
-                        <div className="space-y-1">
-                            <span className="text-sm font-medium text-gray-500">Push Token</span>
-                            <p className="text-[10px] font-mono text-gray-400 break-all bg-gray-50 p-2 rounded-lg">
-                                {diagnostics.pushId}
-                            </p>
-                        </div>
-                    </div>
-                </div>
+                
+                
 
                 {/* Developers Section */}
                 <div className="mt-16 text-center space-y-8">
                     <div className="space-y-1">
-                        <p className="text-[10px] font-bold uppercase tracking-[3px] text-gray-400">Developed By:</p>
-                        <p className="text-[10px] font-bold uppercase tracking-[3px] text-gray-400">CSE-III (2023-2027)</p>
+                        <p className="text-sm font-semibold   text-gray-900">Developed By:</p>
+                        <p className="text-sm font-semibold   text-gray-900">Meenakshi Sundararajan Engineering College</p>
+                        <p className="text-sm font-semibold   text-gray-900">CSE-III (2023-2027)</p>
                     </div>
 
                     <div className="space-y-4">
+                        
                         <TeamMember name="Lakshwin Krishna Reddy M" role="Lead Architect & Backend Engineer" />
-                        <TeamMember name="Dev Vikram Joshi" role="Cloud Architect" />
-                        <TeamMember name="Bharathwaj K" role="Frontend Engineer" />
                         <TeamMember name="Pradosh Gopalakrishnan" role="Backend Engineer & Pentester" />
+                        <TeamMember name="Dev Vikram Joshi" role="Cloud Security Architect" />
+                        <TeamMember name="Bharathwaj K" role="Frontend Engineer" />
+                        
                     </div>
 
-                    {/* Footer */}
-                    <div className="pt-8">
-                        <p className="text-[10px] font-bold uppercase tracking-widest text-gray-300">NEST ERP SECURITY FRAMEWORK</p>
-                        <p className="text-[9px] font-medium text-gray-200 mt-1 uppercase tracking-tighter">PROPRIETARY SYSTEM • © 2026 THE NEST SCHOOL</p>
-                    </div>
+                    
                 </div>
             </div>
         </div>
@@ -231,8 +158,8 @@ function SettingsRow({ icon: Icon, label, value, isLast = false }: { icon: any, 
 function TeamMember({ name, role }: { name: string; role: string }) {
     return (
         <div>
-            <p className="text-[15px] font-bold text-gray-900 tracking-tight">{name}</p>
-            <p className="text-[10px] font-bold uppercase tracking-[2px] text-gray-400 mt-0.5">{role}</p>
+            <p className="text-md font-bold text-gray text-center">{name}</p>
+            <p className="text-sm  text-gray-600 text-center">{role}</p>
         </div>
-    );
+    );  
 }
