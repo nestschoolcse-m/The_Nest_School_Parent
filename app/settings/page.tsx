@@ -83,7 +83,7 @@ export default function SettingsPage() {
                             <User size={28} />
                         </div>
                         <div className="flex-1">
-                            <p className="text-xl font-bold text-gray-900 tracking-tight">{student?.fatherName || student?.motherName || user.usn}</p>
+                            <p className="text-xl font-bold text-gray-900 tracking-tight">{student?.fatherName || student?.motherName}</p>
                             
                         </div>
                     </div>
