@@ -141,8 +141,7 @@ export async function POST(request: NextRequest) {
     // Step 2: Send OneSignal notification
     console.log(`[API] Dispatching OneSignal notification to external_id: ${usn}`);
 
-    const notificationPayload = formatAttendanceNotification(
-      eventData.wardName,
+    const notificationPayload = await formatAttendanceNotification(
       usn,
       eventData.type,
       eventTime,

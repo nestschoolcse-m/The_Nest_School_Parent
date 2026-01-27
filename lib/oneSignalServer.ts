@@ -4,6 +4,9 @@
  * REST API key is stored server-side only and never exposed to client
  */
 
+import { doc, getDoc } from "firebase/firestore";
+import { dataDb } from "./firebase";
+
 // Types for OneSignal operations
 export interface OneSignalNotificationPayload {
   headings: { [key: string]: string };
@@ -171,22 +174,40 @@ export async function tagOneSignalUser(
 
 /**
  * Format notification content with attendance data
+ * Fetches student name from dataDb students collection
  */
-export function formatAttendanceNotification(
-  wardName: string,
+export async function formatAttendanceNotification(
   usn: string,
   eventType: "ENTRY" | "EXIT",
   timestamp: Date,
-): OneSignalNotificationPayload {
+): Promise<OneSignalNotificationPayload> {
   const action = eventType === "ENTRY" ? "entered" : "exited";
   const timeStr = formatTime(timestamp);
+  
+  // Fetch student name from dataDb
+  let studentName = "Student"; // Default fallback
+  try {
+    console.log("[OneSignal] Fetching student data for USN:", usn);
+    const studentRef = doc(dataDb, "students", usn);
+    const studentSnap = await getDoc(studentRef);
+    
+    if (studentSnap.exists()) {
+      const studentData = studentSnap.data();
+      studentName = studentData.name || studentData.wardName || "Student";
+      console.log("[OneSignal] Student name found:", studentName);
+    } else {
+      console.warn("[OneSignal] Student not found in dataDb for USN:", usn);
+    }
+  } catch (error) {
+    console.error("[OneSignal] Error fetching student data:", error);
+  }
 
   return {
     headings: {
       en: "NEST SCHOOL",
     },
     contents: {
-      en: `Your ward ${wardName} with USN ${usn} has ${action} at the campus ${timeStr}`,
+      en: `Your ward ${studentName} with USN ${usn} has ${action} the campus at ${timeStr}`,
     },
     data: {
       usn,

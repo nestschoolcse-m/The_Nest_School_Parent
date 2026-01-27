@@ -5,7 +5,7 @@ import {
   updateDoc,
   serverTimestamp,
 } from "firebase/firestore";
-import { appDb, dataDb } from "./firebase";
+import { dataDb } from "./firebase";
 
 const STORAGE_KEY = "auth_user";
 const DEFAULT_PASSWORD = "parent@123";
@@ -64,12 +64,12 @@ export async function checkStudentExists(usn: string): Promise<boolean> {
 // Create default credentials for a student if not exists
 export async function ensureCredentialsExist(usn: string): Promise<void> {
   try {
-    console.log("[Auth] Ensuring credentials exist in appDb for USN:", usn);
-    const credRef = doc(appDb, "parentCredentials", usn);
+    console.log("[Auth] Ensuring credentials exist in dataDb for USN:", usn);
+    const credRef = doc(dataDb, "parentCredentials", usn);
     const credSnap = await getDoc(credRef);
 
     if (!credSnap.exists()) {
-      console.log("[Auth] Credentials not found in appDb, creating default...");
+      console.log("[Auth] Credentials not found in dataDb, creating default...");
       await setDoc(credRef, {
         password: hashPassword(DEFAULT_PASSWORD),
         isFirstLogin: true,
@@ -79,7 +79,7 @@ export async function ensureCredentialsExist(usn: string): Promise<void> {
       });
       console.log("[Auth] Default credentials created successfully.");
     } else {
-      console.log("[Auth] Credentials already exist in appDb.");
+      console.log("[Auth] Credentials already exist in dataDb.");
     }
   } catch (error: any) {
     console.error("[Auth] Error in ensureCredentialsExist:", error.code, error.message);
@@ -105,7 +105,7 @@ export async function validateLogin(
     await ensureCredentialsExist(usn);
 
     // Get credentials
-    const credRef = doc(appDb, "parentCredentials", usn);
+    const credRef = doc(dataDb, "parentCredentials", usn);
     const credSnap = await getDoc(credRef);
     const credData = credSnap.data();
 
@@ -147,7 +147,7 @@ export async function changePassword(
   newPassword: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    const credRef = doc(appDb, "parentCredentials", usn);
+    const credRef = doc(dataDb, "parentCredentials", usn);
     await updateDoc(credRef, {
       password: hashPassword(newPassword),
       isFirstLogin: false,
@@ -189,7 +189,7 @@ export async function updateFcmToken(
   token: string
 ): Promise<void> {
   try {
-    const credRef = doc(appDb, "parentCredentials", usn);
+    const credRef = doc(dataDb, "parentCredentials", usn);
     await updateDoc(credRef, {
       fcmToken: token,
       updatedAt: serverTimestamp(),
