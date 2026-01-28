@@ -207,7 +207,7 @@ export async function formatAttendanceNotification(
       en: "NEST SCHOOL",
     },
     contents: {
-      en: `Your ward ${studentName} with USN ${usn} has ${action} the campus at ${timeStr}`,
+      en: `Your ward ${studentName} (${usn}) has ${action} the campus at ${timeStr}.`,
     },
     data: {
       usn,

@@ -6,7 +6,9 @@
  */
 
 export async function register() {
-    if (process.env.NEXT_RUNTIME === "nodejs") {
+    // Only run the bridge in development. 
+    // In production (Vercel), we rely on API triggers via /api/attendance/notify
+    if (process.env.NEXT_RUNTIME === "nodejs" && process.env.NODE_ENV !== "production") {
         console.log("------------------------------------------------");
         console.log("🚀 NEST ERP: Starting Internal Attendance Bridge...");
         console.log("------------------------------------------------");
@@ -19,7 +21,9 @@ export async function register() {
                 query,
                 where,
                 onSnapshot,
-                Timestamp
+                Timestamp,
+                doc,
+                getDoc
             } = await import("firebase/firestore");
             const https = await import("https");
 
@@ -53,22 +57,44 @@ export async function register() {
                 where("timestamp", ">=", startTime)
             );
 
-            onSnapshot(q, (snapshot) => {
-                snapshot.docChanges().forEach((change) => {
+            onSnapshot(q, async (snapshot) => {
+                for (const change of snapshot.docChanges()) {
                     if (change.type === "added") {
                         const data = change.doc.data();
                         const usn = (data.usn || data.USN || "").toString().toUpperCase();
                         const type = (data.type || data.Type || "ENTRY").toString();
-                        const name = data.wardName || "Student";
+                        // const name = data.wardName || "Student"; // OLD logic
                         const action = type.toLowerCase() === "entry" ? "entered" : "exited";
+                        const eventTime = data.timestamp ? data.timestamp.toDate() : new Date();
 
-                        console.log(`📝 Next.js Bridge: New Scan Detected (${usn})`);
+                        // Fetch student name from 'students' collection
+                        let studentName = "Student";
+                        try {
+                            const studentRef = doc(db, "students", usn);
+                            const studentSnap = await getDoc(studentRef);
+                            if (studentSnap.exists()) {
+                                const sData = studentSnap.data();
+                                studentName = sData.name || sData.wardName || "Student";
+                            }
+                        } catch (err) {
+                            console.error("❌ Next.js Bridge: Error fetching student name:", err);
+                        }
+
+                        // Format timestamp
+                        const timeStr = eventTime.toLocaleString("en-IN", {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                            hour12: true,
+                            timeZone: "Asia/Kolkata"
+                        });
+
+                        console.log(`📝 Next.js Bridge: New Scan Detected (${usn}) - Name: ${studentName}`);
 
                         const payload = JSON.stringify({
                             app_id: ONESIGNAL_APP_ID,
                             include_external_user_ids: [usn],
                             headings: { en: "NEST SCHOOL" },
-                            contents: { en: `Your ward ${name} (${usn}) has ${action} the campus.` },
+                            contents: { en: `Your ward ${studentName} (${usn}) has ${action} the campus at ${timeStr}.` },
                             data: { usn, type }
                         });
 
@@ -93,7 +119,7 @@ export async function register() {
                         req.write(payload);
                         req.end();
                     }
-                });
+                }
             }, err => {
                 console.error("❌ Next.js Bridge Firestore Error:", err.message);
             });
