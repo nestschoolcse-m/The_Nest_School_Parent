@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "NEST ERP - Parent Portal",
+  title: "The Nest School Parent Portal",
   description:
     "Secure portal for parents to track student attendance and details.",
   manifest: "/manifest.json",

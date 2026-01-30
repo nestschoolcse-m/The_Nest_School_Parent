@@ -98,11 +98,7 @@ export async function POST(request: NextRequest) {
   try {
     // Parse request body
     const body = await request.json();
-    console.log("[API] Attendance request received:", {
-      usn: body.usn,
-      type: body.type,
-      timestamp: body.timestamp,
-    });
+
 
     // Validate request
     const validation = validateRequest(body);
@@ -116,7 +112,7 @@ export async function POST(request: NextRequest) {
     const usn = eventData.usn.toUpperCase();
 
     // Step 1: Write to Firestore attendance_logs collection
-    console.log(`[API] Processing ${eventData.type} for USN: ${usn}`);
+
 
     let firestoreId = "";
     try {
@@ -129,7 +125,7 @@ export async function POST(request: NextRequest) {
         createdAt: serverTimestamp(),
       });
       firestoreId = docRef.id;
-      console.log(`[API] Success: Firestore document created (${firestoreId})`);
+
     } catch (error) {
       console.error("[API] Firestore Error:", error);
       return NextResponse.json(
@@ -139,7 +135,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Step 2: Send OneSignal notification
-    console.log(`[API] Dispatching OneSignal notification to external_id: ${usn}`);
+
 
     const notificationPayload = await formatAttendanceNotification(
       usn,
@@ -165,7 +161,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log(`[API] Complete: Attendance logged and notification sent for ${usn}`);
+
     return NextResponse.json(
       {
         success: true,

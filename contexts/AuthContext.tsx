@@ -61,9 +61,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Listen for foreground notifications
   useEffect(() => {
     if (user) {
-      console.log("[Auth] Adding notification listeners for", user.usn);
+
       const unsubscribe = addNotificationListeners((notification) => {
-        console.log("Notification received in foreground:", notification);
+
       });
       return () => unsubscribe();
     }

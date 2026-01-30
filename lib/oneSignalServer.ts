@@ -49,7 +49,7 @@
       }
 
       const trimmedKey = apiKey.trim();
-      console.log("[OneSignal] Using API Key (start):", trimmedKey.substring(0, 5) + "...");
+
 
       if (!appId) {
         console.error("[OneSignal] App ID not configured");
@@ -59,11 +59,7 @@
         };
       }
 
-      console.log("[OneSignal] Sending notification:", {
-        headings: payload.headings,
-        userIds: payload.include_external_user_ids,
-        appId: appId
-      });
+
 
       const body = {
         app_id: appId,
@@ -97,10 +93,10 @@
       }
 
       const data = await response.json();
-      console.log("[OneSignal] API Response Body:", JSON.stringify(data, null, 2));
+
 
       if (data.id) {
-        console.log("[OneSignal] Notification sent successfully. ID:", data.id);
+
       } else {
         console.warn("[OneSignal] Notification accepted but no ID returned. Recipients:", data.recipients);
       }
@@ -136,7 +132,7 @@
         return { success: false, error: "OneSignal not configured" };
       }
 
-      console.log("[OneSignal] Tagging user:", externalUserId, tags);
+
 
       const response = await fetch(
         `https://onesignal.com/api/v1/apps/${appId}/users/${externalUserId}`,
@@ -163,7 +159,7 @@
         };
       }
 
-      console.log("[OneSignal] User tagged successfully:", externalUserId);
+
       return { success: true };
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
@@ -184,14 +180,14 @@
     // Fetch student name from dataDb
     let studentName = "Student"; // Default fallback
     try {
-      console.log("[OneSignal] Fetching student data for USN:", usn);
+
       const studentRef = doc(dataDb, "students", usn);
       const studentSnap = await getDoc(studentRef);
       
       if (studentSnap.exists()) {
         const studentData = studentSnap.data();
         studentName = studentData.name || studentData.wardName || "Student";
-        console.log("[OneSignal] Student name found:", studentName);
+
       } else {
         console.warn("[OneSignal] Student not found in dataDb for USN:", usn);
       }
@@ -229,7 +225,7 @@
         } else {
           action = "Exited SPORTS";
         }
-        console.log(`[OneSignal] Sports logs today: ${count}, Action: ${action}`);
+
       } catch (error) {
         console.error("[OneSignal] Error querying sports logs:", error);
         action = "Exited SPORTS"; // Default fallback

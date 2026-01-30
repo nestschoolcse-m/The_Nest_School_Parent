@@ -49,11 +49,11 @@ function hashPassword(password: string): string {
 // Check if student exists in data database
 export async function checkStudentExists(usn: string): Promise<boolean> {
   try {
-    console.log("[Auth] Checking student existence in dataDb for USN:", usn);
+
     const studentRef = doc(dataDb, "students", usn);
     const studentSnap = await getDoc(studentRef);
     const exists = studentSnap.exists();
-    console.log("[Auth] Student exists in dataDb:", exists);
+
     return exists;
   } catch (error: any) {
     console.error("[Auth] Error checking student in dataDb:", error.code, error.message);
@@ -64,12 +64,12 @@ export async function checkStudentExists(usn: string): Promise<boolean> {
 // Create default credentials for a student if not exists
 export async function ensureCredentialsExist(usn: string): Promise<void> {
   try {
-    console.log("[Auth] Ensuring credentials exist in dataDb for USN:", usn);
+
     const credRef = doc(dataDb, "parentCredentials", usn);
     const credSnap = await getDoc(credRef);
 
     if (!credSnap.exists()) {
-      console.log("[Auth] Credentials not found in dataDb, creating default...");
+
       await setDoc(credRef, {
         password: hashPassword(DEFAULT_PASSWORD),
         isFirstLogin: true,
@@ -77,9 +77,9 @@ export async function ensureCredentialsExist(usn: string): Promise<void> {
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
-      console.log("[Auth] Default credentials created successfully.");
+
     } else {
-      console.log("[Auth] Credentials already exist in dataDb.");
+
     }
   } catch (error: any) {
     console.error("[Auth] Error in ensureCredentialsExist:", error.code, error.message);
@@ -93,11 +93,11 @@ export async function validateLogin(
   password: string
 ): Promise<{ success: boolean; isFirstLogin?: boolean; error?: string }> {
   try {
-    console.log("[Auth] Starting login validation for USN:", usn);
+
     // Check if student exists
     const studentExists = await checkStudentExists(usn);
     if (!studentExists) {
-      console.log("[Auth] Login failed: Student not found in dataDb.");
+
       return { success: false, error: "Invalid USN. Student not found." };
     }
 
@@ -110,14 +110,14 @@ export async function validateLogin(
     const credData = credSnap.data();
 
     if (!credData) {
-      console.log("[Auth] Login failed: Credentials missing after check.");
+
       return { success: false, error: "Credentials not found." };
     }
 
     // Check password
     const hashedInput = hashPassword(password);
     if (credData.password !== hashedInput) {
-      console.log("[Auth] Login failed: Incorrect password.");
+
       return { success: false, error: "Incorrect password." };
     }
 
@@ -128,7 +128,7 @@ export async function validateLogin(
     };
     webStorage.setItem(STORAGE_KEY, JSON.stringify(authUser));
 
-    console.log("[Auth] Login successful!");
+
     return { success: true, isFirstLogin: credData.isFirstLogin };
   } catch (error: any) {
     console.error("[Auth] Critical login error:", error.code, error.message);

@@ -40,7 +40,7 @@ export async function registerForPushNotifications(usn: string): Promise<string 
 
     // 1. Initialize OneSignal
     if (!isInitialized) {
-      console.log("[Notifications] Setup for USN:", usnUpperCase);
+
       await OneSignal.init({
         appId,
         allowLocalhostAsSecureOrigin: true,
@@ -71,7 +71,7 @@ export async function registerForPushNotifications(usn: string): Promise<string 
 function startAttendanceListener(usn: string) {
   if (unsubscribeAttendance) unsubscribeAttendance();
 
-  console.log(`[Notifications] Starting Live Sync for ${usn}...`);
+
 
   // Use a simpler query first to avoid index requirements
   const q = query(
@@ -95,7 +95,7 @@ function startAttendanceListener(usn: string) {
 
         // Notify only if the log is very recent (last 30 seconds)
         if (logTime && (now - logTime.toMillis() < 30000)) {
-          console.log("[Notifications] NEW LOG DETECTED:", data);
+
           showLocalNotification(data);
         }
       }
@@ -111,7 +111,7 @@ function fallbackListener(usn: string) {
   const q = query(collection(dataDb, "attendance_logs"), limit(1));
   unsubscribeAttendance = onSnapshot(q, (snapshot) => {
     // Simple fallback to detect if we can even reach the collection
-    console.log("[Notifications] Fallback sync connected");
+
   });
 }
 

@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log(`[API] Processing notification for Attendance ID: ${attendanceId}`);
+
 
     const logRef = doc(dataDb, "attendance_logs", attendanceId);
     const logSnap = await getDoc(logRef);
@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
     const logData = logSnap.data();
 
     if (logData.notified === true) {
-      console.log(`[API] Already notified for ID: ${attendanceId}`);
+
       return NextResponse.json(
         { success: true, message: "Already notified" },
         { status: 200 }
@@ -86,7 +86,7 @@ export async function POST(request: NextRequest) {
     // Update Firestore to mark as notified
     await updateDoc(logRef, { notified: true });
 
-    console.log(`[API] Notification success for ${attendanceId}`);
+
 
     return NextResponse.json(
       { success: true, messageId: result.messageId },

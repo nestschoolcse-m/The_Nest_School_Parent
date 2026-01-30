@@ -9,9 +9,7 @@ export async function register() {
     // Only run the bridge in development. 
     // In production (Vercel), we rely on API triggers via /api/attendance/notify
     if (process.env.NEXT_RUNTIME === "nodejs" && process.env.NODE_ENV !== "production") {
-        console.log("------------------------------------------------");
-        console.log("🚀 NEST ERP: Starting Internal Attendance Bridge...");
-        console.log("------------------------------------------------");
+
 
         try {
             const { initializeApp } = await import("firebase/app");
@@ -49,7 +47,7 @@ export async function register() {
                 return;
             }
 
-            console.log("📡 Bridge Active: Monitoring Firestore 'attendance_logs'...");
+
 
             const startTime = Timestamp.now();
             const q = query(
@@ -88,7 +86,7 @@ export async function register() {
                             timeZone: "Asia/Kolkata"
                         });
 
-                        console.log(`📝 Next.js Bridge: New Scan Detected (${usn}) - Name: ${studentName}`);
+
 
                         const payload = JSON.stringify({
                             app_id: ONESIGNAL_APP_ID,
@@ -111,7 +109,7 @@ export async function register() {
                             res.on("data", (d) => body += d);
                             res.on("end", () => {
                                 const resp = JSON.parse(body);
-                                if (resp.id) console.log(`✅ Next.js Bridge: Notification sent to ${usn}`);
+
                             });
                         });
 

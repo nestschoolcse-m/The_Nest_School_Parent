@@ -387,5 +387,4 @@ const PRODUCTION = {
   ],
 };
 
-console.log("QUICK REFERENCE GUIDE LOADED");
-console.log("See this file for implementation details");
+
