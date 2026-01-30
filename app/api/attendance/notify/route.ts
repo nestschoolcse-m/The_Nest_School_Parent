@@ -49,8 +49,10 @@ export async function POST(request: NextRequest) {
     // Extract necessary data
     // Case insensitive fallback for legacy data
     const usn = (logData.usn || logData.USN || "").toString().toUpperCase();
-    const type = (logData.type || logData.Type || "ENTRY").toString();
-    const eventType = type.toUpperCase() === "ENTRY" ? "ENTRY" : "EXIT";
+    const type = (logData.type || logData.Type || "ENTRY").toString().toUpperCase();
+    const eventType = (type === "ENTRY" || type === "EXIT" || type === "SPORTS") 
+      ? type as "ENTRY" | "EXIT" | "SPORTS" 
+      : "EXIT";
     const timestamp = logData.timestamp ? logData.timestamp.toDate() : new Date();
 
     if (!usn) {

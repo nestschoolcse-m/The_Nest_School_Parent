@@ -33,7 +33,7 @@ import {
 interface AttendanceEventRequest {
   usn: string;
   wardName: string;
-  type: "ENTRY" | "EXIT";
+  type: "ENTRY" | "EXIT" | "SPORTS";
   timestamp?: string;
   parentId?: string;
 }
@@ -65,8 +65,8 @@ function validateRequest(body: any): {
     return { valid: false, error: "Missing or invalid 'wardName'" };
   }
 
-  if (!type || !["ENTRY", "EXIT"].includes(type)) {
-    return { valid: false, error: "Invalid 'type'. Must be 'ENTRY' or 'EXIT'" };
+  if (!type || !["ENTRY", "EXIT", "SPORTS"].includes(type)) {
+    return { valid: false, error: "Invalid 'type'. Must be 'ENTRY', 'EXIT' or 'SPORTS'" };
   }
 
   // Validate optional timestamp
