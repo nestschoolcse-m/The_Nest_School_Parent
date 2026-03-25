@@ -7,12 +7,16 @@ import React, {
   useEffect,
   ReactNode,
 } from "react";
+import { onAuthStateChanged, User } from "firebase/auth";
+import { auth } from "@/lib/firebase";
 import {
   AuthUser,
-  getStoredUser,
-  validateLogin,
-  changePassword as changePasswordFn,
+  signInWithGoogle,
+  getLinkedUsn,
+  linkUsnToAccount,
   logout as logoutFn,
+  cacheAuthUser,
+  getCachedAuthUser
 } from "@/lib/auth";
 import {
   registerForPushNotifications,
@@ -21,85 +25,121 @@ import {
 
 interface AuthContextType {
   user: AuthUser | null;
+  firebaseUser: User | null;
   isLoading: boolean;
-  login: (
-    usn: string,
-    password: string,
-  ) => Promise<{ success: boolean; isFirstLogin?: boolean; error?: string }>;
-  changePassword: (
-    newPassword: string,
-  ) => Promise<{ success: boolean; error?: string }>;
+  loginWithGoogle: () => Promise<{ success: boolean; needsUsnLink?: boolean; error?: string }>;
+  linkStudent: (usn: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
-  setUser: (user: AuthUser | null) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
+  const [firebaseUser, setFirebaseUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Check for stored user on app start
+  // Monitor Firebase Auth state
   useEffect(() => {
-    async function loadUser() {
-      try {
-        const storedUser = await getStoredUser();
-        if (storedUser) {
-          setUser(storedUser);
-          // Register for push notifications (includes OneSignal login/tagging)
-          await registerForPushNotifications(storedUser.usn);
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+      setFirebaseUser(currentUser);
+      
+      if (currentUser) {
+        // Fetch linked USN from Firestore
+        const usn = await getLinkedUsn(currentUser.uid);
+        if (usn) {
+          const authUser = {
+            usn,
+            email: currentUser.email || undefined,
+            uid: currentUser.uid,
+            isFirstLogin: false
+          };
+          setUser(authUser);
+          cacheAuthUser(authUser);
+          registerForPushNotifications(usn);
+        } else {
+          // They are logged in with Google but haven't linked a student USN yet
+          setUser(null); // Keep user null so they are forced to link USN in the UI
         }
-      } catch (error) {
-        console.error("Error loading user:", error);
-      } finally {
-        setIsLoading(false);
+      } else {
+        setUser(null);
       }
-    }
-    loadUser();
+      setIsLoading(false);
+    });
+
+    return () => unsubscribe();
   }, []);
 
   // Listen for foreground notifications
   useEffect(() => {
     if (user) {
-
       const unsubscribe = addNotificationListeners((notification) => {
-
+        // Custom logic for handling notification clicks or showing toasts if needed
       });
       return () => unsubscribe();
     }
   }, [user]);
 
-  const login = async (usn: string, password: string) => {
-    const result = await validateLogin(usn.toUpperCase(), password);
-    if (result.success) {
-      const usnUpperCase = usn.toUpperCase();
-      setUser({ usn: usnUpperCase, isFirstLogin: result.isFirstLogin! });
-
-      // Non-blocking setup - handled entirely by the unified helper
-      registerForPushNotifications(usnUpperCase);
+  const loginWithGoogle = async () => {
+    const result = await signInWithGoogle();
+    if (result.success && result.user) {
+      const usn = await getLinkedUsn(result.user.uid);
+      if (usn) {
+        const authUser = {
+          usn,
+          email: result.user.email || undefined,
+          uid: result.user.uid,
+          isFirstLogin: false
+        };
+        setUser(authUser);
+        cacheAuthUser(authUser);
+        registerForPushNotifications(usn);
+        return { success: true, needsUsnLink: false };
+      } else {
+        return { success: true, needsUsnLink: true };
+      }
     }
-    return result;
+    return { success: false, error: result.error || "Login Failed" };
   };
 
-  const changePassword = async (newPassword: string) => {
-    if (!user) {
-      return { success: false, error: "Not logged in" };
+  const linkStudent = async (usn: string) => {
+    if (!firebaseUser) {
+      return { success: false, error: "Not logged into Google Auth." };
     }
-    const result = await changePasswordFn(user.usn, newPassword);
-    if (result.success) {
-      setUser({ ...user, isFirstLogin: false });
+    if (!firebaseUser.email) {
+      return { success: false, error: "Google account has no email." };
     }
-    return result;
+    
+    // Convert to upper case and trim for consistent DB queries
+    const usnUpperCase = usn.trim().toUpperCase();
+
+    const linkResult = await linkUsnToAccount(firebaseUser.uid, firebaseUser.email, usnUpperCase);
+    
+    if (linkResult.success) {
+      const authUser = {
+        usn: usnUpperCase,
+        email: firebaseUser.email,
+        uid: firebaseUser.uid,
+        isFirstLogin: false
+      };
+      setUser(authUser);
+      cacheAuthUser(authUser);
+      registerForPushNotifications(usnUpperCase);
+      return { success: true };
+    } else {
+      return { success: false, error: linkResult.error };
+    }
   };
 
   const logout = async () => {
     await logoutFn();
     setUser(null);
+    setFirebaseUser(null);
   };
 
   return (
     <AuthContext.Provider
-      value={{ user, isLoading, login, changePassword, logout, setUser }}
+      value={{ user, firebaseUser, isLoading, loginWithGoogle, linkStudent, logout }}
     >
       {children}
     </AuthContext.Provider>

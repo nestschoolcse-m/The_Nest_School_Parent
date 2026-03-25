@@ -5,12 +5,17 @@ import {
   updateDoc,
   serverTimestamp,
 } from "firebase/firestore";
-import { dataDb } from "./firebase";
+import { dataDb, auth, googleProvider } from "./firebase";
+import { signInWithPopup, signOut } from "firebase/auth";
 
-const STORAGE_KEY = "auth_user";
-const DEFAULT_PASSWORD = "parent@123";
+export interface AuthUser {
+  usn: string;
+  isFirstLogin: boolean;
+  email?: string;
+  uid?: string;
+}
 
-// Storage helper for web
+// Storage helper for web (optional fallback/caching)
 const webStorage = {
   getItem: (key: string) => {
     if (typeof window !== "undefined") {
@@ -30,157 +35,85 @@ const webStorage = {
   },
 };
 
-export interface AuthUser {
-  usn: string;
-  isFirstLogin: boolean;
-}
-
-// Simple hash function (for demo - use bcrypt in production)
-function hashPassword(password: string): string {
-  let hash = 0;
-  for (let i = 0; i < password.length; i++) {
-    const char = password.charCodeAt(i);
-    hash = (hash << 5) - hash + char;
-    hash = hash & hash;
-  }
-  return hash.toString(16);
-}
+const STORAGE_KEY = "auth_user_cache";
 
 // Check if student exists in data database
 export async function checkStudentExists(usn: string): Promise<boolean> {
   try {
-
     const studentRef = doc(dataDb, "students", usn);
     const studentSnap = await getDoc(studentRef);
-    const exists = studentSnap.exists();
-
-    return exists;
+    return studentSnap.exists();
   } catch (error: any) {
     console.error("[Auth] Error checking student in dataDb:", error.code, error.message);
     return false;
   }
 }
 
-// Create default credentials for a student if not exists
-export async function ensureCredentialsExist(usn: string): Promise<void> {
+// Get linked USN for a given Firebase Auth UID
+export async function getLinkedUsn(uid: string): Promise<string | null> {
   try {
-
-    const credRef = doc(dataDb, "parentCredentials", usn);
-    const credSnap = await getDoc(credRef);
-
-    if (!credSnap.exists()) {
-
-      await setDoc(credRef, {
-        password: hashPassword(DEFAULT_PASSWORD),
-        isFirstLogin: true,
-        fcmToken: null,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      });
-
-    } else {
-
+    const userRef = doc(dataDb, "parentUsers", uid);
+    const userSnap = await getDoc(userRef);
+    if (userSnap.exists()) {
+      return userSnap.data()?.usn || null;
     }
+    return null;
   } catch (error: any) {
-    console.error("[Auth] Error in ensureCredentialsExist:", error.code, error.message);
-    throw error; // Re-throw to catch in validateLogin
+    console.error("[Auth] Error fetching linked USN:", error.code, error.message);
+    return null;
   }
 }
 
-// Validate login credentials
-export async function validateLogin(
-  usn: string,
-  password: string
-): Promise<{ success: boolean; isFirstLogin?: boolean; error?: string }> {
+// Link a USN to a specific Firebase Auth UID
+export async function linkUsnToAccount(uid: string, email: string, usn: string): Promise<{ success: boolean; error?: string }> {
   try {
-
-    // Check if student exists
+    // Verify USN exists first
     const studentExists = await checkStudentExists(usn);
     if (!studentExists) {
-
       return { success: false, error: "Invalid USN. Student not found." };
     }
 
-    // Ensure credentials exist (auto-create with default password)
-    await ensureCredentialsExist(usn);
-
-    // Get credentials
-    const credRef = doc(dataDb, "parentCredentials", usn);
-    const credSnap = await getDoc(credRef);
-    const credData = credSnap.data();
-
-    if (!credData) {
-
-      return { success: false, error: "Credentials not found." };
-    }
-
-    // Check password
-    const hashedInput = hashPassword(password);
-    if (credData.password !== hashedInput) {
-
-      return { success: false, error: "Incorrect password." };
-    }
-
-    // Save to local storage
-    const authUser: AuthUser = {
+    // Save mapping to parentUsers collection
+    const userRef = doc(dataDb, "parentUsers", uid);
+    await setDoc(userRef, {
+      email,
       usn,
-      isFirstLogin: credData.isFirstLogin,
-    };
-    webStorage.setItem(STORAGE_KEY, JSON.stringify(authUser));
-
-
-    return { success: true, isFirstLogin: credData.isFirstLogin };
-  } catch (error: any) {
-    console.error("[Auth] Critical login error:", error.code, error.message);
-    return {
-      success: false,
-      error: error.code === 'permission-denied'
-        ? "Access Denied. Check your Firestore Rules."
-        : `Login failed: ${error.message}`
-    };
-  }
-}
-
-// Change password
-export async function changePassword(
-  usn: string,
-  newPassword: string
-): Promise<{ success: boolean; error?: string }> {
-  try {
-    const credRef = doc(dataDb, "parentCredentials", usn);
-    await updateDoc(credRef, {
-      password: hashPassword(newPassword),
-      isFirstLogin: false,
-      updatedAt: serverTimestamp(),
+      linkedAt: serverTimestamp(),
     });
-
-    // Update local storage
-    const authUser: AuthUser = { usn, isFirstLogin: false };
-    webStorage.setItem(STORAGE_KEY, JSON.stringify(authUser));
+    
+    // Also ensure parentCredentials doc exists so FCM tokens can be saved
+    const credRef = doc(dataDb, "parentCredentials", usn);
+    await setDoc(credRef, {
+      email,
+      updatedAt: serverTimestamp(),
+    }, { merge: true });
 
     return { success: true };
-  } catch (error) {
-    console.error("Password change error:", error);
-    return { success: false, error: "Failed to change password." };
+  } catch (error: any) {
+    console.error("[Auth] Error linking USN:", error.code, error.message);
+    return { success: false, error: "Failed to link student USN." };
   }
 }
 
-// Get stored user
-export async function getStoredUser(): Promise<AuthUser | null> {
+// Sign in with Google
+export async function signInWithGoogle(): Promise<{ success: boolean; user?: any; error?: string }> {
   try {
-    const stored = webStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      return JSON.parse(stored);
-    }
-    return null;
-  } catch (error) {
-    return null;
+    const result = await signInWithPopup(auth, googleProvider);
+    return { success: true, user: result.user };
+  } catch (error: any) {
+    console.error("[Auth] Google Sign-in error:", error.code, error.message);
+    return { success: false, error: error.message };
   }
 }
 
 // Logout
 export async function logout(): Promise<void> {
-  webStorage.removeItem(STORAGE_KEY);
+  try {
+    await signOut(auth);
+    webStorage.removeItem(STORAGE_KEY);
+  } catch (error) {
+    console.error("[Auth] Logout error:", error);
+  }
 }
 
 // Update FCM token
@@ -190,11 +123,28 @@ export async function updateFcmToken(
 ): Promise<void> {
   try {
     const credRef = doc(dataDb, "parentCredentials", usn);
-    await updateDoc(credRef, {
+    await setDoc(credRef, {
       fcmToken: token,
       updatedAt: serverTimestamp(),
-    });
+    }, { merge: true }); // using setDoc with merge in case the doc doesn't exist
   } catch (error) {
     console.error("Failed to update FCM token:", error);
   }
+}
+
+// Cache helpers
+export function cacheAuthUser(user: AuthUser) {
+  webStorage.setItem(STORAGE_KEY, JSON.stringify(user));
+}
+
+export function getCachedAuthUser(): AuthUser | null {
+  try {
+    const stored = webStorage.getItem(STORAGE_KEY);
+    if (stored) {
+      return JSON.parse(stored);
+    }
+  } catch (error) {
+    return null;
+  }
+  return null;
 }
